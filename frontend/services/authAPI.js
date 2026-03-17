@@ -1,34 +1,33 @@
 // services/authAPI.js
 
-console.log("STAGE:", process.env.NEXT_PUBLIC_STAGE);
-console.log("LOCAL URL:", process.env.NEXT_PUBLIC_API_BASE_URL_LOCAL);
-
 const getApiBaseUrl = () => {
-  const stage = process.env.NEXT_PUBLIC_STAGE;
+  if (typeof window === "undefined") return "";
 
-  switch (stage) {
-    case 'alpha':
-      return process.env.NEXT_PUBLIC_API_BASE_URL_LOCAL;
-    case 'beta':
-      return process.env.NEXT_PUBLIC_API_BASE_URL_BETA;
+  const host = window.location.hostname;
+  console.log("HOST:", host);
 
-    case 'gamma':
-      return process.env.NEXT_PUBLIC_API_BASE_URL_GAMMA;
-
-    case 'prod':
-      return process.env.NEXT_PUBLIC_API_BASE_URL_PROD;
-
-    default:
-      console.warn("⚠️ Unknown stage, defaulting to beta");
-      return process.env.NEXT_PUBLIC_API_BASE_URL_LOCAL;
+  // 🔵 BETA
+  if (host.includes("beta.assistant.jobsyme.com")) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL_BETA;
   }
+
+  // 🟡 GAMMA
+  if (host.includes("gamma.assistant.jobsyme.com")) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL_GAMMA;
+  }
+
+  // 🔴 PROD (default)
+  if (host.includes("assistant.jobsyme.com")) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL_PROD;
+  }
+
+  console.warn("⚠️ Unknown host, fallback to PROD");
+  return process.env.NEXT_PUBLIC_API_BASE_URL_PROD;
 };
 
 const config = {
-  API_BASE_URL: getApiBaseUrl(),
-  STAGE: process.env.NEXT_PUBLIC_STAGE,
-  JWT_STORAGE_KEY: 'jobsyme_assistant_auth_token',
-  USER_STORAGE_KEY: 'jobsyme_assistant_data'
+  JWT_STORAGE_KEY: "jobsyme_assistant_auth_token",
+  USER_STORAGE_KEY: "jobsyme_assistant_data"
 };
 
 class AuthAPIError extends Error {
@@ -39,23 +38,27 @@ class AuthAPIError extends Error {
 }
 
 const makeAPIRequest = async (endpoint, options = {}) => {
-  if (!config.API_BASE_URL) {
-    throw new Error("❌ API Base URL is not defined. Check ENV variables.");
+  const baseUrl = getApiBaseUrl();
+
+  if (!baseUrl) {
+    throw new Error("❌ API Base URL is missing. Check ENV variables.");
   }
 
-  const url = `${config.API_BASE_URL}${endpoint}`;
+  const url = `${baseUrl}${endpoint}`;
   console.log("FINAL API URL:", url);
+
   const token =
     typeof window !== "undefined"
       ? localStorage.getItem(config.JWT_STORAGE_KEY)
       : null;
 
   const res = await fetch(url, {
+    method: options.method || "GET",
+    body: options.body,
     headers: {
-      'Content-Type': 'application/json',
+      ...(options.body && { "Content-Type": "application/json" }),
       ...(token && { Authorization: `Bearer ${token}` })
-    },
-    ...options
+    }
   });
 
   let data;
@@ -75,8 +78,8 @@ const makeAPIRequest = async (endpoint, options = {}) => {
 // ✅ ONLY ASSISTANT LOGIN
 export const authAPI = {
   assistantLogin: async (email, password) => {
-    return makeAPIRequest('/assistant/login-logout', {
-      method: 'POST',
+    return makeAPIRequest("/assistant/login-logout", {
+      method: "POST",
       body: JSON.stringify({ email, password })
     });
   }
