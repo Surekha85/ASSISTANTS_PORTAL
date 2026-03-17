@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { toast } from "react-hot-toast";
 import { validateEmail } from "../utils/auth";
-import { assistantLogin } from "../services/authAPI";
+import { authAPI } from "../services/authAPI";
 
 export default function Login() {
   const router = useRouter();
@@ -34,7 +34,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await assistantLogin(email, password);
+      const response = await authAPI.assistantLogin(email, password);
 
       // Store data
       localStorage.setItem("assistant_token", response.token);

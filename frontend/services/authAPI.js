@@ -1,9 +1,34 @@
 // services/authAPI.js
 
+console.log("STAGE:", process.env.NEXT_PUBLIC_STAGE);
+console.log("LOCAL URL:", process.env.NEXT_PUBLIC_API_BASE_URL_LOCAL);
+
+const getApiBaseUrl = () => {
+  const stage = process.env.NEXT_PUBLIC_STAGE;
+
+  switch (stage) {
+    case 'alpha':
+      return process.env.NEXT_PUBLIC_API_BASE_URL_LOCAL;
+    case 'beta':
+      return process.env.NEXT_PUBLIC_API_BASE_URL_BETA;
+
+    case 'gamma':
+      return process.env.NEXT_PUBLIC_API_BASE_URL_GAMMA;
+
+    case 'prod':
+      return process.env.NEXT_PUBLIC_API_BASE_URL_PROD;
+
+    default:
+      console.warn("⚠️ Unknown stage, defaulting to beta");
+      return process.env.NEXT_PUBLIC_API_BASE_URL_LOCAL;
+  }
+};
+
 const config = {
-  API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
-  JWT_STORAGE_KEY: 'jobsyme_auth_token',
-  USER_STORAGE_KEY: 'jobsyme_user_data'
+  API_BASE_URL: getApiBaseUrl(),
+  STAGE: process.env.NEXT_PUBLIC_STAGE,
+  JWT_STORAGE_KEY: 'jobsyme_assistant_auth_token',
+  USER_STORAGE_KEY: 'jobsyme_assistant_data'
 };
 
 class AuthAPIError extends Error {
@@ -14,9 +39,16 @@ class AuthAPIError extends Error {
 }
 
 const makeAPIRequest = async (endpoint, options = {}) => {
-  const url = `${config.API_BASE_URL}${endpoint}`;
+  if (!config.API_BASE_URL) {
+    throw new Error("❌ API Base URL is not defined. Check ENV variables.");
+  }
 
-  const token = localStorage.getItem(config.JWT_STORAGE_KEY);
+  const url = `${config.API_BASE_URL}${endpoint}`;
+  console.log("FINAL API URL:", url);
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem(config.JWT_STORAGE_KEY)
+      : null;
 
   const res = await fetch(url, {
     headers: {
@@ -26,19 +58,24 @@ const makeAPIRequest = async (endpoint, options = {}) => {
     ...options
   });
 
-  const data = await res.json();
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    throw new AuthAPIError("Invalid JSON response from server", res.status);
+  }
 
   if (!res.ok) {
-    throw new AuthAPIError(data.message || "Something went wrong", res.status);
+    throw new AuthAPIError(data?.message || "Something went wrong", res.status);
   }
 
   return data;
 };
 
-// ✅ Assistant Login Only
+// ✅ ONLY ASSISTANT LOGIN
 export const authAPI = {
   assistantLogin: async (email, password) => {
-    return makeAPIRequest('/assistant/login', {
+    return makeAPIRequest('/assistant/login-logout', {
       method: 'POST',
       body: JSON.stringify({ email, password })
     });
