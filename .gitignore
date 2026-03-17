@@ -1,0 +1,19 @@
+# Node.js / Next.js (frontend only)
+node_modules/
+**/node_modules/
+.next/
+out/
+frontend/.next/
+frontend/out/
+
+# Environment & Secrets
+.env
+*.env
+
+# IDE / System
+.DS_Store
+.vscode/
+.idea/
+
+# Log files
+*.log
