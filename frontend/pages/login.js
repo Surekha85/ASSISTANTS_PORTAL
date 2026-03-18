@@ -34,6 +34,7 @@ export default function Login() {
     setLoading(true);
 
     try {
+      //login
       const response = await authAPI.assistantLogin(email, password);
 
       localStorage.setItem("assistant_token", response.token);
