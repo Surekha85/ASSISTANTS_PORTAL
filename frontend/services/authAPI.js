@@ -22,7 +22,7 @@ const getApiBaseUrl = () => {
   }
 
   console.warn("⚠️ Unknown host, fallback to PROD");
-  return process.env.NEXT_PUBLIC_API_BASE_URL_PROD;
+  return process.env.NEXT_PUBLIC_API_BASE_URL_LOCAL;
 };
 
 const config = {
