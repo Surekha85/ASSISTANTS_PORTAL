@@ -1,6 +1,24 @@
+
+// services/authAPI.js
+
+const getApiBaseUrl = () => {
+  if (typeof window === "undefined") return "";
+
+  const host = window.location.hostname;
+  console.log("HOST:", host);
+
+  let baseUrl = 'https://tewmd39dwf.execute-api.us-east-1.amazonaws.com/alpha';
+
+  if (!baseUrl) {
+    console.error("❌ API Base URL is missing for this host. Check Vercel env variables!");
+  }
+
+  return baseUrl;
+};
+
 const config = {
   JWT_STORAGE_KEY: "jobsyme_assistant_auth_token",
-  USER_STORAGE_KEY: "jobsyme_assistant_data",
+  USER_STORAGE_KEY: "jobsyme_assistant_data"
 };
 
 class AuthAPIError extends Error {
@@ -10,10 +28,15 @@ class AuthAPIError extends Error {
   }
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL_LOCAL || "";
-
 const makeAPIRequest = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const baseUrl = getApiBaseUrl();
+
+  if (!baseUrl) {
+    throw new Error("❌ API Base URL is missing. Cannot make request.");
+  }
+
+  const url = `${baseUrl}${endpoint}`;
+  console.log("FINAL API URL:", url);
 
   const token =
     typeof window !== "undefined"
@@ -22,43 +45,35 @@ const makeAPIRequest = async (endpoint, options = {}) => {
 
   const res = await fetch(url, {
     method: options.method || "GET",
+    body: options.body,
     headers: {
       ...(options.body && { "Content-Type": "application/json" }),
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined,
+      ...(token && { Authorization: `Bearer ${token}` })
+    }
   });
 
   let data;
   try {
     data = await res.json();
-  } catch {
+  } catch (err) {
     throw new AuthAPIError("Invalid JSON response from server", res.status);
   }
 
   if (!res.ok) {
-    throw new AuthAPIError(data?.error || "Something went wrong", res.status);
+    throw new AuthAPIError(data?.message || "Something went wrong", res.status);
   }
 
   return data;
 };
 
-// ✅ Assistant login
+// ✅ ONLY ASSISTANT LOGIN
 export const authAPI = {
   assistantLogin: async (email, password) => {
     return makeAPIRequest("/assistant/login-logout", {
       method: "POST",
-      body: { action: "login", email, password },
+      body: JSON.stringify({ email, password })
     });
-  },
-
-  assistantLogout: async (token) => {
-    return makeAPIRequest("/assistant/login-logout", {
-      method: "POST",
-      token,
-      body: { action: "logout" },
-    });
-  },
+  }
 };
 
 export default config;

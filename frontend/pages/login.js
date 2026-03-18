@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { toast } from "react-hot-toast";
-import { validateEmail } from "../utils/auth";
+import { validateEmail, loginUser } from "../utils/auth";
 import { authAPI } from "../services/authAPI";
 
 export default function Login() {
@@ -34,16 +35,32 @@ export default function Login() {
     setLoading(true);
 
     try {
+      //login page
       const response = await authAPI.assistantLogin(email, password);
 
-      localStorage.setItem("assistant_token", response.token);
-      localStorage.setItem("assistant_user", JSON.stringify(response.user));
+      // ✅ Store token + user centrally
+      loginUser(response);
+
+      // 🔥 Notify Navbar instantly (NO reload needed)
+      window.dispatchEvent(new Event("authChanged"));
 
       toast.success("Login successful!");
-      router.push("/assistant-dashboard");
+
+      // ✅ Redirect
+      router.push("/dashboard");
 
     } catch (error) {
-      toast.error(error.message || "Login failed");
+      // Extract backend error message
+      let msg = "Login failed";
+
+      try {
+        const parsed = JSON.parse(error.message);
+        msg = parsed?.error || parsed?.message || msg;
+      } catch {
+        msg = error.message || msg;
+      }
+
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

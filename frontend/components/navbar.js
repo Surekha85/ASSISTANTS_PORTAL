@@ -9,34 +9,48 @@ export default function Navbar() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
-  const dropdownRef = useRef();
+  const dropdownRef = useRef(null);
 
-  // ✅ Load user
   useEffect(() => {
     setMounted(true);
-    const currentUser = getCurrentUser();
-    setUser(currentUser);
+
+    const loadUser = () => {
+      const currentUser = getCurrentUser();
+      setUser(currentUser);
+    };
+
+    loadUser();
+
+    window.addEventListener("authChanged", loadUser);
+
+    return () => {
+      window.removeEventListener("authChanged", loadUser);
+    };
   }, []);
 
-  // ✅ Close dropdown on outside click
+  // ✅ Outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+
+    document.addEventListener("click", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
   }, []);
 
-  // 🌙 Theme toggle
   const handleThemeToggle = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
-  // 🔓 Logout
-  const handleLogout = () => {
+  const handleLogout = (e) => {
+    e.stopPropagation();
     logout();
+    setOpen(false);
   };
 
   if (!mounted) return null;
@@ -45,8 +59,8 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 w-full bg-[#0f172a] shadow-sm border-b border-slate-800">
       <div className="max-w-7xl mx-auto px-4 py-5 flex items-center justify-between">
 
-        {/* 🔵 LEFT: Logo */}
-        <Link href="/" className="flex items-center gap-3">
+        {/* ✅ LOGO (NO LOGOUT ISSUE NOW) */}
+        <div className="flex items-center gap-3">
           <Image 
             src="/jobsyme_logo.png" 
             alt="Jobsyme Logo" 
@@ -58,12 +72,12 @@ export default function Navbar() {
           <span className="text-xl font-bold text-blue-400">
             Jobsyme
           </span>
-        </Link>
+        </div>
 
-        {/* 🔴 RIGHT */}
+        {/* RIGHT */}
         <div className="flex items-center gap-4 text-white relative">
 
-          {/* 🌙 Theme Toggle */}
+          {/* Theme Toggle */}
           <button
             onClick={handleThemeToggle}
             className="px-3 py-1 bg-gray-700 rounded"
@@ -71,33 +85,39 @@ export default function Navbar() {
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
 
-          {/* 👤 PROFILE */}
+          {/* PROFILE */}
           <div ref={dropdownRef} className="relative">
 
             {/* Profile Circle */}
             <div
-              onClick={() => setOpen(!open)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen((prev) => !prev);
+              }}
               className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center cursor-pointer font-bold"
             >
-              {user?.first_name?.charAt(0).toUpperCase() || "?"}
+              {user?.first_name?.[0]?.toUpperCase() || "U"}
             </div>
 
             {/* Dropdown */}
             {open && (
-              <div className="absolute right-0 mt-2 w-52 bg-white text-black rounded shadow-lg py-2">
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 mt-2 w-52 bg-[#0f172a] text-white rounded-lg shadow-lg py-2 border border-slate-700"
+              >
                 
-                <div className="px-4 py-2 border-b">
-                  <p className="font-semibold">
+                <div className="px-4 py-2 border-b border-slate-700">
+                  <p className="font-semibold text-white">
                     {user?.first_name || "User"}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-400">
                     {user?.email || ""}
                   </p>
                 </div>
 
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                  className="w-full text-left px-4 py-2 hover:bg-slate-700 text-red-400 hover:text-red-300"
                 >
                   Logout
                 </button>
