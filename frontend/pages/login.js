@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { toast } from "react-hot-toast";
-import { validateEmail, loginUser } from "../utils/auth";
+import { validateEmail, loginUser, getCurrentUser } from "../utils/auth";
 import { authAPI } from "../services/authAPI";
 
-export default function Login() {
+export default function AssistantLogin() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -15,6 +14,14 @@ export default function Login() {
   const [emailValid, setEmailValid] = useState(false);
   const [showForgotMsg, setShowForgotMsg] = useState(false);
 
+  // ✅ Redirect if already logged in
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user && user.user_type === "assistant") {
+      router.push("/dashboard");
+    }
+  }, [router]);
+
   useEffect(() => {
     setEmailValid(validateEmail(email));
   }, [email]);
@@ -23,41 +30,36 @@ export default function Login() {
     e.preventDefault();
 
     if (!emailValid) {
-      toast.error("Please enter a valid email");
-      return;
+      return toast.error("Please enter a valid email");
     }
 
     if (!password) {
-      toast.error("Please enter password");
-      return;
+      return toast.error("Please enter password");
     }
 
     setLoading(true);
 
     try {
-      //login page
       const response = await authAPI.assistantLogin(email, password);
 
-      // ✅ Store token + user centrally
+      // ✅ Store auth data
       loginUser(response);
 
-      // 🔥 Notify Navbar instantly (NO reload needed)
+      // 🔥 Update navbar / global state
       window.dispatchEvent(new Event("authChanged"));
 
-      toast.success("Login successful!");
+      toast.success("Welcome back, Assistant!");
 
-      // ✅ Redirect
       router.push("/dashboard");
 
     } catch (error) {
-      // Extract backend error message
       let msg = "Login failed";
 
       try {
         const parsed = JSON.parse(error.message);
         msg = parsed?.error || parsed?.message || msg;
       } catch {
-        msg = error.message || msg;
+        msg = error?.message || msg;
       }
 
       toast.error(msg);
@@ -67,35 +69,33 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-[#0f172a] dark:via-[#1e293b] dark:to-[#0f172a] py-12 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-[#0f172a] dark:via-[#1e293b] dark:to-[#0f172a] px-4">
 
       <div className="max-w-md w-full bg-white dark:bg-[#1e2633]/95 p-10 rounded-3xl shadow-2xl border border-gray-200 dark:border-purple-500/20">
 
-        {/* TITLE */}
+        {/* HEADER */}
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-            {showForgotMsg ? "Forgot Password" : "Welcome Back"}
+            {showForgotMsg ? "Forgot Password" : "Assistant Login"}
           </h2>
 
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
             {showForgotMsg
-              ? "Password reset instructions"
-              : "Sign in to your assistant account to continue"}
+              ? "Contact admin to reset your password"
+              : "Sign in to your assistant dashboard"}
           </p>
         </div>
 
-        {/* CONDITIONAL UI */}
+        {/* FORGOT PASSWORD VIEW */}
         {showForgotMsg ? (
           <div className="space-y-6">
 
-            {/* MESSAGE */}
             <div className="bg-yellow-100 text-yellow-800 p-4 rounded-lg text-sm text-center">
-              Please contact the Jobsyme admin {" "}
+              Please contact{" "}
               <span className="font-semibold">admin@jobsyme.com</span>{" "}
               to reset your password.
             </div>
 
-            {/* BACK BUTTON */}
             <button
               onClick={() => setShowForgotMsg(false)}
               className="w-full p-3 rounded-lg font-semibold bg-gray-600 hover:bg-gray-700 text-white"
@@ -116,6 +116,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
+
               {email && (
                 <div className="absolute right-3 top-3">
                   {emailValid ? (
@@ -136,6 +137,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
