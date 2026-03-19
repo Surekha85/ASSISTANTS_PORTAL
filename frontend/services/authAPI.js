@@ -3,14 +3,7 @@
 const getApiBaseUrl = () => {
   if (typeof window === "undefined") return "";
 
-  let baseUrl =
-    "https://tewmd39dwf.execute-api.us-east-1.amazonaws.com/alpha";
-
-  if (!baseUrl) {
-    console.error("❌ API Base URL is missing!");
-  }
-
-  return baseUrl;
+  return "https://tewmd39dwf.execute-api.us-east-1.amazonaws.com/alpha";
 };
 
 const config = {
@@ -24,6 +17,7 @@ class AuthAPIError extends Error {
     this.status = status;
   }
 };
+
 const makeAPIRequest = async (endpoint, options = {}) => {
   const baseUrl = getApiBaseUrl();
   if (!baseUrl) throw new Error("❌ Missing API base URL");
@@ -45,8 +39,7 @@ const makeAPIRequest = async (endpoint, options = {}) => {
     },
   });
 
-  const text = await res.text(); // 🔥 ALWAYS READ TEXT FIRST
-  console.log("📦 RAW RESPONSE:", text);
+  const text = await res.text();
 
   let data;
 
@@ -56,7 +49,7 @@ const makeAPIRequest = async (endpoint, options = {}) => {
     throw new Error("Invalid JSON response");
   }
 
-  // 🔥 HANDLE AWS WRAPPED RESPONSE
+  // 🔥 AWS nested body handling
   if (data?.body && typeof data.body === "string") {
     try {
       data = JSON.parse(data.body);
@@ -66,15 +59,16 @@ const makeAPIRequest = async (endpoint, options = {}) => {
   }
 
   if (!res.ok) {
-    throw new Error(data?.message || "Something went wrong");
+    throw new AuthAPIError(data?.message || "Something went wrong", res.status);
   }
 
   return data;
 };
 
-// ✅ CLEAN API METHODS
+// 🚀 ALL API METHODS
 export const authAPI = {
-  // LOGIN
+
+  // 🔐 LOGIN
   assistantLogin: async (email, password) => {
     return makeAPIRequest("/assistant/login-logout", {
       method: "POST",
@@ -82,15 +76,37 @@ export const authAPI = {
     });
   },
 
-  // ✅ GET ASSIGNED CANDIDATES
+  // 👥 ASSIGNED CANDIDATES
   getAssignedCandidates: async () => {
     return makeAPIRequest("/assistant/assigned-candidates");
   },
 
-  // ✅ GET SINGLE CANDIDATE DETAILS
+  // 👤 CANDIDATE DETAILS
   getCandidateDetails: async (candidateId) => {
     return makeAPIRequest(`/assistant/candidate/${candidateId}`);
   },
+
+  // 🚀 GITHUB ACTIVITIES (WEEKLY)
+  getGithubActivities: async (candidateId, date) => {
+    return makeAPIRequest(
+      `/assistant/candidate/${candidateId}/github-activities?date=${date}`
+    );
+  },
+
+  // 💼 LINKEDIN ACTIVITIES (WEEKLY)
+  getLinkedinActivities: async (candidateId, date) => {
+    return makeAPIRequest(
+      `/assistant/candidate/${candidateId}/linkedin-activities?date=${date}`
+    );
+  },
+
+  // 📄 JOB APPLICATIONS (WEEKLY)
+  getJobApplications: async (candidateId, date) => {
+    return makeAPIRequest(
+      `/assistant/candidate/${candidateId}/job-applications?date=${date}`
+    );
+  },
+
 };
 
 export default config;

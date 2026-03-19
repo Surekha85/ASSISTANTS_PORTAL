@@ -1,86 +1,98 @@
 import { useState, useEffect, useRef } from "react";
-import { Rocket, Users } from "lucide-react";
+import { Rocket, Users, Github, Linkedin } from "lucide-react";
 import { authAPI } from "../services/authAPI";
+import { useRouter } from "next/router";
 
 export default function AssistantDashboard() {
-  const [activeMenu, setActiveMenu] = useState(null);
+  const router = useRouter();
+
+  const [activeMenu, setActiveMenu] = useState("assigned"); // ✅ default
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [tableHeight, setTableHeight] = useState(0);
 
   const headerRef = useRef(null);
 
-  // 🔥 AUTO HEIGHT CALCULATION
+  // 🔥 HEIGHT CALCULATION
   useEffect(() => {
-    const calculateHeight = () => {
-      const screenHeight = window.innerHeight;
-      const headerHeight = headerRef.current?.offsetHeight || 0;
-
-      const remaining = screenHeight - headerHeight - 20; // small padding
-      setTableHeight(remaining);
+    const calc = () => {
+      const h = window.innerHeight;
+      const header = headerRef.current?.offsetHeight || 0;
+      setTableHeight(h - header - 20);
     };
 
-    calculateHeight();
-    window.addEventListener("resize", calculateHeight);
-
-    return () => window.removeEventListener("resize", calculateHeight);
+    calc();
+    window.addEventListener("resize", calc);
+    return () => window.removeEventListener("resize", calc);
   }, []);
 
-  const handleAssignedCandidates = async () => {
-    setActiveMenu("assigned");
+  // 🔥 FETCH CANDIDATES
+  const fetchCandidates = async () => {
     setLoading(true);
-
     try {
       const res = await authAPI.getAssignedCandidates();
       const ids = res?.assigned_candidates || [];
 
-      const allDetails = await Promise.all(
+      const data = await Promise.all(
         ids.map(async (id) => {
           try {
-            return await authAPI.getCandidateDetails(id);
+            const d = await authAPI.getCandidateDetails(id);
+            return { ...d, id };
           } catch {
             return null;
           }
         })
       );
 
-      setCandidates(allDetails.filter(Boolean));
-    } catch (err) {
-      console.error(err);
+      setCandidates(data.filter(Boolean));
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
+  // 🔥 LOAD ON PAGE OPEN (DEFAULT ASSIGNED)
+  useEffect(() => {
+    fetchCandidates();
+  }, []);
+
+  // 🔥 ROUTES
+  const handleGithub = () => router.push("/github_activities");
+  const handleLinkedin = () => router.push("/linkedin_activities");
+  const handleJobs = () => router.push("/job_applications");
+
   return (
-    <div className="h-screen flex overflow-hidden bg-[#0f172a] text-white">
+    <div className="h-screen flex bg-[#0f172a] text-white overflow-hidden">
 
       {/* SIDEBAR */}
       <aside className="w-72 p-3 flex-shrink-0">
-        <div className="h-full bg-[#1e293b] rounded-2xl p-5 border border-slate-700">
+        <div className="bg-[#1e293b] h-full rounded-2xl p-5 border border-slate-700 space-y-3">
 
-          <div className="space-y-3">
-            <div
-              onClick={handleAssignedCandidates}
-              className={`p-4 rounded-xl cursor-pointer ${
-                activeMenu === "assigned"
-                  ? "bg-gradient-to-r from-blue-600/30 to-purple-600/30"
-                  : "hover:bg-[#0f172a]"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Users size={20} />
-                <span>Assigned Candidates</span>
-              </div>
-            </div>
+          <MenuItem
+            label="Assigned Candidates"
+            icon={<Users size={20} />}
+            active={activeMenu === "assigned"}
+            onClick={() => setActiveMenu("assigned")}
+          />
 
-            <div className="p-4 rounded-xl hover:bg-[#0f172a]">
-              <div className="flex items-center gap-3">
-                <Rocket size={20} />
-                <span>More Tools</span>
-              </div>
-            </div>
-          </div>
+          <MenuItem
+            label="GitHub"
+            icon={<Github size={20} />}
+            onClick={handleGithub}
+          />
+
+          <MenuItem
+            label="LinkedIn"
+            icon={<Linkedin size={20} />}
+            onClick={handleLinkedin}
+          />
+
+          <MenuItem
+            label="Job Applications"
+            icon={<Rocket size={20} />}
+            onClick={handleJobs}
+          />
 
         </div>
       </aside>
@@ -88,8 +100,8 @@ export default function AssistantDashboard() {
       {/* MAIN */}
       <main className="flex-1 flex flex-col overflow-hidden p-4">
 
-        {/* 🔥 HEADER (USED FOR HEIGHT CALCULATION) */}
-        <div ref={headerRef} className="mb-4 shrink-0">
+        {/* HEADER */}
+        <div ref={headerRef} className="mb-4">
           <h1 className="text-2xl font-bold">
             Assigned Candidates
           </h1>
@@ -104,7 +116,7 @@ export default function AssistantDashboard() {
             style={{ height: tableHeight }}
           >
 
-            {/* 🔥 ONLY HORIZONTAL SCROLL */}
+            {/* 🔥 SCROLL */}
             <div className="w-full h-full overflow-x-auto overflow-y-hidden">
 
               <table className="min-w-[1600px] w-full text-sm">
@@ -173,15 +185,21 @@ export default function AssistantDashboard() {
                       </td>
 
                       <td className="p-3">
-                        <a href={c.github} target="_blank">GitHub</a>
+                        <a href={c.github} target="_blank" rel="noreferrer">
+                          GitHub
+                        </a>
                       </td>
 
                       <td className="p-3">
-                        <a href={c.linkedin} target="_blank">LinkedIn</a>
+                        <a href={c.linkedin} target="_blank" rel="noreferrer">
+                          LinkedIn
+                        </a>
                       </td>
 
                       <td className="p-3">
-                        <a href={c.resumeUrl} target="_blank">Resume</a>
+                        <a href={c.resumeUrl} target="_blank" rel="noreferrer">
+                          Resume
+                        </a>
                       </td>
 
                     </tr>
@@ -193,11 +211,24 @@ export default function AssistantDashboard() {
           </div>
         )}
 
-        {!loading && candidates.length === 0 && (
-          <p>Click Assigned Candidates to load data</p>
-        )}
-
       </main>
+    </div>
+  );
+}
+
+// 🔥 MENU ITEM
+function MenuItem({ label, icon, onClick, active }) {
+  return (
+    <div
+      onClick={onClick}
+      className={`p-4 rounded-xl cursor-pointer flex gap-3 items-center ${
+        active
+          ? "bg-gradient-to-r from-blue-600/30 to-purple-600/30"
+          : "hover:bg-[#0f172a]"
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
     </div>
   );
 }
