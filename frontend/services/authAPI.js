@@ -17,12 +17,10 @@ class AuthAPIError extends Error {
     this.status = status;
   }
 };
-
 const makeAPIRequest = async (endpoint, options = {}) => {
   const baseUrl = getApiBaseUrl();
-  if (!baseUrl) throw new Error("❌ Missing API base URL");
-
   const url = `${baseUrl}${endpoint}`;
+
   console.log("🌐 API:", url);
 
   const token =
@@ -30,17 +28,23 @@ const makeAPIRequest = async (endpoint, options = {}) => {
       ? localStorage.getItem(config.JWT_STORAGE_KEY)
       : null;
 
-  const res = await fetch(url, {
-    method: options.method || "GET",
-    body: options.body,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-  });
+  let res;
+
+  try {
+    res = await fetch(url, {
+      method: options.method || "GET",
+      body: options.body,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+  } catch (err) {
+    console.error("❌ NETWORK ERROR:", err);
+    throw new Error("Network error - backend not reachable");
+  }
 
   const text = await res.text();
-
   let data;
 
   try {
@@ -49,17 +53,14 @@ const makeAPIRequest = async (endpoint, options = {}) => {
     throw new Error("Invalid JSON response");
   }
 
-  // 🔥 AWS nested body handling
   if (data?.body && typeof data.body === "string") {
     try {
       data = JSON.parse(data.body);
-    } catch {
-      console.error("❌ Failed to parse nested body");
-    }
+    } catch {}
   }
 
   if (!res.ok) {
-    throw new AuthAPIError(data?.message || "Something went wrong", res.status);
+    throw new Error(data?.message || "API Error");
   }
 
   return data;
@@ -105,6 +106,30 @@ export const authAPI = {
     return makeAPIRequest(
       `/assistant/candidate/${candidateId}/job-applications?date=${date}`
     );
+  },
+
+  // ✅ NEW API (IMPORTANT)
+  createJobApplication(payload) {
+    const baseUrl = getApiBaseUrl();
+    return fetch(`${baseUrl}/assistant/job-drafts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: localStorage.getItem("token"),
+      },
+      body: JSON.stringify(payload), // 🔥 REQUIRED
+    }).then(res => res.json());
+  },
+  addProject: async (payload) => {
+    const baseUrl = getApiBaseUrl();
+    return fetch(`${baseUrl}/assistant/github-activities`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: localStorage.getItem("token"),
+      },
+      body: JSON.stringify(payload), // 🔥 REQUIRED
+    }).then(res => res.json());
   },
 
 };

@@ -1,213 +1,155 @@
-import { useState, useEffect, useRef } from "react";
-import { Rocket, Users, Github, Linkedin } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Users, Github, Linkedin, Rocket, Folder } from "lucide-react";
 import { authAPI } from "../services/authAPI";
 import { useRouter } from "next/router";
 
 export default function AssistantDashboard() {
   const router = useRouter();
 
-  const [activeMenu, setActiveMenu] = useState("assigned"); // ✅ default
   const [candidates, setCandidates] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [tableHeight, setTableHeight] = useState(0);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
 
-  const headerRef = useRef(null);
-
-  // 🔥 HEIGHT CALCULATION
+  // 🔥 Load candidates
   useEffect(() => {
-    const calc = () => {
-      const h = window.innerHeight;
-      const header = headerRef.current?.offsetHeight || 0;
-      setTableHeight(h - header - 20);
+    const load = async () => {
+      try {
+        const res = await authAPI.getAssignedCandidates();
+        const ids = res?.assigned_candidates || [];
+
+        const all = await Promise.all(
+          ids.map(async (id) => {
+            try {
+              const d = await authAPI.getCandidateDetails(id);
+              return { ...d, id };
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        setCandidates(all.filter(Boolean));
+      } catch (err) {
+        console.error(err);
+      }
     };
 
-    calc();
-    window.addEventListener("resize", calc);
-    return () => window.removeEventListener("resize", calc);
+    load();
   }, []);
 
-  // 🔥 FETCH CANDIDATES
-  const fetchCandidates = async () => {
-    setLoading(true);
-    try {
-      const res = await authAPI.getAssignedCandidates();
-      const ids = res?.assigned_candidates || [];
-
-      const data = await Promise.all(
-        ids.map(async (id) => {
-          try {
-            const d = await authAPI.getCandidateDetails(id);
-            return { ...d, id };
-          } catch {
-            return null;
-          }
-        })
-      );
-
-      setCandidates(data.filter(Boolean));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
+  // 🔥 Restore selected candidate (IMPORTANT)
+  useEffect(() => {
+    const stored = localStorage.getItem("selectedCandidate");
+    if (stored) {
+      setSelectedCandidate(JSON.parse(stored));
     }
+  }, []);
+
+  // 🔥 Handle select candidate
+  const handleSelectCandidate = (candidate) => {
+    setSelectedCandidate(candidate);
+    localStorage.setItem("selectedCandidate", JSON.stringify(candidate));
   };
 
-  // 🔥 LOAD ON PAGE OPEN (DEFAULT ASSIGNED)
-  useEffect(() => {
-    fetchCandidates();
-  }, []);
+  // 🔥 Navigation handler (keeps menu active)
+  const navigateWithCandidate = (path) => {
+    if (!selectedCandidate) return;
 
-  // 🔥 ROUTES
-  const handleGithub = () => router.push("/github_activities");
-  const handleLinkedin = () => router.push("/linkedin_activities");
-  const handleJobs = () => router.push("/job_applications");
+    localStorage.setItem(
+      "selectedCandidate",
+      JSON.stringify(selectedCandidate)
+    );
+
+    router.push(`${path}?candidateId=${selectedCandidate.id}`);
+  };
 
   return (
-    <div className="h-screen flex bg-[#0f172a] text-white overflow-hidden">
-
+    <div className="flex min-h-screen bg-white dark:bg-[#0f172a] text-black dark:text-white">
+      
       {/* SIDEBAR */}
-      <aside className="w-72 p-3 flex-shrink-0">
-        <div className="bg-[#1e293b] h-full rounded-2xl p-5 border border-slate-700 space-y-3">
-
-          <MenuItem
-            label="Assigned Candidates"
-            icon={<Users size={20} />}
-            active={activeMenu === "assigned"}
-            onClick={() => setActiveMenu("assigned")}
-          />
-
-          <MenuItem
-            label="GitHub"
-            icon={<Github size={20} />}
-            onClick={handleGithub}
-          />
-
-          <MenuItem
-            label="LinkedIn"
-            icon={<Linkedin size={20} />}
-            onClick={handleLinkedin}
-          />
-
-          <MenuItem
-            label="Job Applications"
-            icon={<Rocket size={20} />}
-            onClick={handleJobs}
-          />
-
+      <aside className="w-72 p-4 bg-gray-100 dark:bg-[#1e293b]">
+        
+        {/* TITLE */}
+        <div className="p-3 font-semibold flex gap-2">
+          <Users /> Candidates
         </div>
+
+        {/* SELECTED CANDIDATE */}
+        {selectedCandidate && (
+          <div className="p-3 mt-3 bg-white dark:bg-[#0f172a] rounded">
+            <p className="font-semibold">
+              {selectedCandidate.first_name} {selectedCandidate.last_name}
+            </p>
+            <p className="text-sm text-gray-500">
+              {selectedCandidate.email}
+            </p>
+          </div>
+        )}
+
+        {/* MENU */}
+        {selectedCandidate && (
+          <div className="mt-4 space-y-2">
+
+            <MenuItem
+              label="Job Applications"
+              icon={<Rocket />}
+              onClick={() => navigateWithCandidate("/job_applications")}
+            />
+
+            <MenuItem
+              label="GitHub"
+              icon={<Github />}
+              onClick={() => navigateWithCandidate("/github_activities")}
+            />
+
+            <MenuItem
+              label="LinkedIn"
+              icon={<Linkedin />}
+              onClick={() => navigateWithCandidate("/linkedin_activities")}
+            />
+
+            <MenuItem
+              label="Portfolio"
+              icon={<Folder />}
+              onClick={() => alert("Portfolio Coming Soon")}
+            />
+
+          </div>
+        )}
       </aside>
 
       {/* MAIN */}
-      <main className="flex-1 flex flex-col overflow-hidden p-4">
+      <main className="flex-1 p-6">
 
-        {/* HEADER */}
-        <div ref={headerRef} className="mb-4">
-          <h1 className="text-2xl font-bold">
-            Assigned Candidates
-          </h1>
-        </div>
+        {!selectedCandidate && (
+          <>
+            <h1 className="text-2xl mb-4">Select Candidate</h1>
 
-        {loading && <p>Loading...</p>}
-
-        {!loading && candidates.length > 0 && (
-
-          <div
-            className="bg-[#1e293b] rounded-2xl border border-slate-700 overflow-hidden"
-            style={{ height: tableHeight }}
-          >
-
-            {/* 🔥 SCROLL */}
-            <div className="w-full h-full overflow-x-auto overflow-y-hidden">
-
-              <table className="min-w-[1600px] w-full text-sm">
-
-                {/* HEADER */}
-                <thead className="bg-[#0f172a] sticky top-0 z-10">
-                  <tr>
-                    <th className="p-3 text-left">Name</th>
-                    <th className="p-3 text-left">Email</th>
-                    <th className="p-3 text-left">Phone</th>
-                    <th className="p-3 text-left">City</th>
-                    <th className="p-3 text-left">Experience</th>
-                    <th className="p-3 text-left">Education</th>
-                    <th className="p-3 text-left">Skills</th>
-                    <th className="p-3 text-left">Job Type</th>
-                    <th className="p-3 text-left">Salary</th>
-                    <th className="p-3 text-left">Work Auth</th>
-                    <th className="p-3 text-left">Relocate</th>
-                    <th className="p-3 text-left">GitHub</th>
-                    <th className="p-3 text-left">LinkedIn</th>
-                    <th className="p-3 text-left">Resume</th>
-                  </tr>
-                </thead>
-
-                {/* BODY */}
-                <tbody>
-                  {candidates.map((c, i) => (
-                    <tr
-                      key={i}
-                      className="border-t border-slate-700 hover:bg-[#0f172a]/50"
-                    >
-                      <td className="p-3 font-semibold">
-                        {c.first_name} {c.last_name}
-                      </td>
-
-                      <td className="p-3">{c.email}</td>
-                      <td className="p-3">{c.phone}</td>
-                      <td className="p-3">{c.address?.city}</td>
-
-                      <td className="p-3">
-                        {c.careerDetails?.yearsExperience || 0} yrs
-                      </td>
-
-                      <td className="p-3">
-                        {c.careerDetails?.highestEducation}
-                      </td>
-
-                      <td className="p-3">
-                        {c.careerDetails?.skills?.join(", ")}
-                      </td>
-
-                      <td className="p-3">
-                        {c.careerDetails?.preferredJobType}
-                      </td>
-
-                      <td className="p-3">
-                        {c.jobPreferences?.salaryExpectation}
-                      </td>
-
-                      <td className="p-3">
-                        {c.careerDetails?.workAuthorized ? "Yes" : "No"}
-                      </td>
-
-                      <td className="p-3">
-                        {c.careerDetails?.willingToRelocate ? "Yes" : "No"}
-                      </td>
-
-                      <td className="p-3">
-                        <a href={c.github} target="_blank" rel="noreferrer">
-                          GitHub
-                        </a>
-                      </td>
-
-                      <td className="p-3">
-                        <a href={c.linkedin} target="_blank" rel="noreferrer">
-                          LinkedIn
-                        </a>
-                      </td>
-
-                      <td className="p-3">
-                        <a href={c.resumeUrl} target="_blank" rel="noreferrer">
-                          Resume
-                        </a>
-                      </td>
-
-                    </tr>
-                  ))}
-                </tbody>
-
-              </table>
+            <div className="grid grid-cols-3 gap-4">
+              {candidates.map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => handleSelectCandidate(c)}
+                  className="p-4 border rounded-xl cursor-pointer bg-white dark:bg-[#1e293b] hover:shadow-md"
+                >
+                  <h3 className="font-semibold">
+                    {c.first_name} {c.last_name}
+                  </h3>
+                  <p className="text-sm text-gray-500">{c.email}</p>
+                </div>
+              ))}
             </div>
+          </>
+        )}
+
+        {/* OPTIONAL: Show dashboard content when selected */}
+        {selectedCandidate && (
+          <div>
+            <h1 className="text-2xl font-semibold mb-2">
+              Welcome, {selectedCandidate.first_name}
+            </h1>
+            <p className="text-gray-500">
+              Select a menu option from the left to continue.
+            </p>
           </div>
         )}
 
@@ -216,19 +158,14 @@ export default function AssistantDashboard() {
   );
 }
 
-// 🔥 MENU ITEM
-function MenuItem({ label, icon, onClick, active }) {
+function MenuItem({ label, icon, onClick }) {
   return (
     <div
       onClick={onClick}
-      className={`p-4 rounded-xl cursor-pointer flex gap-3 items-center ${
-        active
-          ? "bg-gradient-to-r from-blue-600/30 to-purple-600/30"
-          : "hover:bg-[#0f172a]"
-      }`}
+      className="p-2 cursor-pointer flex gap-2 rounded hover:bg-gray-200 dark:hover:bg-[#0f172a]"
     >
       {icon}
-      <span>{label}</span>
+      {label}
     </div>
   );
 }
