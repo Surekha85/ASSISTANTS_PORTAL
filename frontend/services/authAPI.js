@@ -103,19 +103,54 @@ export const authAPI = {
 
   // 📄 JOB APPLICATIONS (WEEKLY)
   getJobApplications: async (candidateId, date) => {
-    return makeAPIRequest(
-      `/assistant/candidate/${candidateId}/job-applications?date=${date}`
-    );
+    const baseUrl = getApiBaseUrl();
+
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem(config.JWT_STORAGE_KEY)
+        : null;
+
+    return fetch(
+      `${baseUrl}/assistant/candidate/${candidateId}/job-applications?date=${date}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      }
+    )
+      .then(res => res.text())
+      .then(text => {
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error("Invalid JSON");
+        }
+
+        if (data?.body && typeof data.body === "string") {
+          try {
+            data = JSON.parse(data.body);
+          } catch {}
+        }
+
+        return data;
+      });
   },
 
   // ✅ NEW API (IMPORTANT)
   createJobApplication(payload) {
     const baseUrl = getApiBaseUrl();
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem(config.JWT_STORAGE_KEY)
+        : null;
     return fetch(`${baseUrl}/assistant/job-drafts`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: localStorage.getItem("token"),
+        ...(token && { Authorization: `Bearer ${token}` }),
       },
       body: JSON.stringify(payload), // 🔥 REQUIRED
     }).then(res => res.json());
@@ -126,7 +161,7 @@ export const authAPI = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: localStorage.getItem("token"),
+        Authorization: localStorage.getItem(config.JWT_STORAGE_KEY),
       },
       body: JSON.stringify(payload), // 🔥 REQUIRED
     }).then(res => res.json());

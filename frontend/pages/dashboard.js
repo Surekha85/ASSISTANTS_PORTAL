@@ -36,7 +36,7 @@ export default function AssistantDashboard() {
     load();
   }, []);
 
-  // 🔥 Restore selected candidate (IMPORTANT)
+  // 🔥 Restore selected candidate
   useEffect(() => {
     const stored = localStorage.getItem("selectedCandidate");
     if (stored) {
@@ -50,7 +50,13 @@ export default function AssistantDashboard() {
     localStorage.setItem("selectedCandidate", JSON.stringify(candidate));
   };
 
-  // 🔥 Navigation handler (keeps menu active)
+  // 🔥 Change candidate (FIX)
+  const handleChangeCandidate = () => {
+    setSelectedCandidate(null);
+    localStorage.removeItem("selectedCandidate");
+  };
+
+  // 🔥 Navigation handler
   const navigateWithCandidate = (path) => {
     if (!selectedCandidate) return;
 
@@ -75,13 +81,24 @@ export default function AssistantDashboard() {
 
         {/* SELECTED CANDIDATE */}
         {selectedCandidate && (
-          <div className="p-3 mt-3 bg-white dark:bg-[#0f172a] rounded">
-            <p className="font-semibold">
-              {selectedCandidate.first_name} {selectedCandidate.last_name}
-            </p>
-            <p className="text-sm text-gray-500">
-              {selectedCandidate.email}
-            </p>
+          <div className="p-3 mt-3 bg-white dark:bg-[#0f172a] rounded space-y-2">
+            
+            <div>
+              <p className="font-semibold">
+                {selectedCandidate.first_name} {selectedCandidate.last_name}
+              </p>
+              <p className="text-sm text-gray-500">
+                {selectedCandidate.email}
+              </p>
+            </div>
+
+            {/* 🔥 CHANGE BUTTON */}
+            <button
+              onClick={handleChangeCandidate}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              Change Candidate
+            </button>
           </div>
         )}
 
@@ -120,6 +137,7 @@ export default function AssistantDashboard() {
       {/* MAIN */}
       <main className="flex-1 p-6">
 
+        {/* 🔥 SELECT SCREEN */}
         {!selectedCandidate && (
           <>
             <h1 className="text-2xl mb-4">Select Candidate</h1>
@@ -141,13 +159,22 @@ export default function AssistantDashboard() {
           </>
         )}
 
-        {/* OPTIONAL: Show dashboard content when selected */}
+        {/* 🔥 DASHBOARD */}
         {selectedCandidate && (
           <div>
             <h1 className="text-2xl font-semibold mb-2">
               Welcome, {selectedCandidate.first_name}
             </h1>
-            <p className="text-gray-500">
+
+            {/* 🔥 SWITCH BUTTON (EXTRA UX) */}
+            <button
+              onClick={handleChangeCandidate}
+              className="mt-2 px-4 py-2 bg-gray-200 dark:bg-[#1e293b] rounded"
+            >
+              Switch Candidate
+            </button>
+
+            <p className="text-gray-500 mt-3">
               Select a menu option from the left to continue.
             </p>
           </div>
