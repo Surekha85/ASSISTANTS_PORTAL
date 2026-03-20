@@ -79,19 +79,18 @@ export default function JobApplications() {
     try {
       setSubmitting(true);
 
-      // 🔥 VALIDATION
+      if (!candidateId || candidateId === "undefined") {
+        alert("Candidate ID missing ❌");
+        console.error("❌ candidateId:", candidateId);
+        return;
+      }
+
       if (!form.company || !form.role || !form.job_link) {
         alert("Please fill required fields");
         return;
       }
 
-      // 🔥 FIX URL ISSUE (THIS WAS CAUSING 500)
       const cleanUrl = form.job_link.trim();
-
-      if (cleanUrl.includes("…")) {
-        alert("Invalid URL. Please paste full link");
-        return;
-      }
 
       if (!cleanUrl.startsWith("http")) {
         alert("URL must start with http/https");
@@ -99,7 +98,7 @@ export default function JobApplications() {
       }
 
       const payload = {
-        jaa_candidate_id: candidateId,
+        jaa_candidate_id: String(candidateId), // ✅ FORCE STRING
         company_name: form.company,
         job_title: form.role,
         experience: Number(form.experience) || 0,
@@ -107,6 +106,8 @@ export default function JobApplications() {
         applied_via: form.applied_via || "LinkedIn",
         employment_type: form.employment_type || "Full-Time",
       };
+
+      console.log("🔥 FINAL PAYLOAD:", payload); // 👈 IMPORTANT
 
       const res = await authAPI.createJobApplication(payload);
 
@@ -125,11 +126,11 @@ export default function JobApplications() {
         employment_type: "",
       });
 
-      fetchData(); // refresh
+      fetchData();
 
     } catch (err) {
-      console.error("❌ ERROR:", err);
-      alert("Something went wrong ❌");
+      console.error("❌ ERROR FULL:", err);
+      alert(err.message || "Something went wrong ❌");
     } finally {
       setSubmitting(false);
     }

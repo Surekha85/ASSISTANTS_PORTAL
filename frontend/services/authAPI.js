@@ -140,21 +140,51 @@ export const authAPI = {
   },
 
   // ✅ NEW API (IMPORTANT)
-  createJobApplication(payload) {
+  createJobApplication: async (payload) => {
     const baseUrl = getApiBaseUrl();
+
     const token =
       typeof window !== "undefined"
         ? localStorage.getItem(config.JWT_STORAGE_KEY)
         : null;
-    return fetch(`${baseUrl}/assistant/job-drafts`, {
+
+    console.log("🔐 TOKEN:", token);
+    console.log("🔥 PAYLOAD:", payload);
+
+    const res = await fetch(`${baseUrl}/assistant/job-drafts`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
+        ...(token && { Authorization: `Bearer ${token}` }), // ✅ FIXED
       },
-      body: JSON.stringify(payload), // 🔥 REQUIRED
-    }).then(res => res.json());
+      body: JSON.stringify(payload), // ✅ normal (no wrapping)
+    });
+
+    const text = await res.text();
+    console.log("📦 RESPONSE:", text);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error("Invalid JSON");
+    }
+
+    if (data?.body && typeof data.body === "string") {
+      try {
+        data = JSON.parse(data.body);
+      } catch {}
+    }
+
+    if (!res.ok) {
+      console.error("❌ ERROR:", data);
+      throw new Error(data?.message || "Failed");
+    }
+
+    return data;
   },
+
+
   addProject: async (payload) => {
     const baseUrl = getApiBaseUrl();
     return fetch(`${baseUrl}/assistant/github-activities`, {
