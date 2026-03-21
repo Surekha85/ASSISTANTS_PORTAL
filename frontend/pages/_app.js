@@ -16,7 +16,7 @@ export default function MyApp({ Component, pageProps }) {
     <>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={true}>
         {!hideNavbar && <Navbar />}
-        <Toaster position="top-center" reverseOrder={false} />
+        <Toaster position="top-right" reverseOrder={false} />
         <Component {...pageProps} />
       </ThemeProvider>
       <Analytics />

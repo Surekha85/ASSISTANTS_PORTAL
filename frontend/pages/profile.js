@@ -72,12 +72,6 @@ export default function Profile() {
             {/* GRID */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-              {/* Email */}
-              <div className="border border-slate-700 rounded-xl p-4 bg-[#0f172a]">
-                <p className="text-sm text-gray-400 mb-1">Email</p>
-                <p className="font-medium">{user?.email}</p>
-              </div>
-
               {/* First Name */}
               <div className="border border-slate-700 rounded-xl p-4 bg-[#0f172a]">
                 <p className="text-sm text-gray-400 mb-1">First Name</p>
@@ -90,12 +84,11 @@ export default function Profile() {
                 <p className="font-medium">{user?.last_name || "-"}</p>
               </div>
 
-              {/* Email Status */}
+              {/* Email */}
               <div className="border border-slate-700 rounded-xl p-4 bg-[#0f172a]">
-                <p className="text-sm text-gray-400 mb-1">Email Status</p>
-                <p className="text-green-400 font-medium">Verified</p>
+                <p className="text-sm text-gray-400 mb-1">Email</p>
+                <p className="font-medium">{user?.email}</p>
               </div>
-
             </div>
 
             {/* INFO BOX */}
