@@ -187,77 +187,100 @@ export const authAPI = {
 
   addProject: async (payload) => {
     const baseUrl = getApiBaseUrl();
-    return fetch(`${baseUrl}/assistant/github-activities`, {
+
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem(config.JWT_STORAGE_KEY)
+        : null;
+    const res = await fetch(`${baseUrl}/assistant/github-activities`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: localStorage.getItem(config.JWT_STORAGE_KEY),
+        ...(token && { Authorization: `Bearer ${token}` }), // ✅ FIXED
       },
-      body: JSON.stringify(payload), // 🔥 REQUIRED
-    }).then(res => res.json());
+      body: JSON.stringify(payload),
+    });
+
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error("Invalid JSON");
+    }
+
+    if (data?.body && typeof data.body === "string") {
+      try {
+        data = JSON.parse(data.body);
+      } catch {}
+    }
+
+    if (!res.ok) {
+      console.error("❌ ERROR:", data);
+      throw new Error(data?.message || "Failed to add/update project");
+    }
+    return data;
   },
 
   // 💼 CREATE LINKEDIN ACTIVITY
   createLinkedinActivity: async (payload) => {
 
-  const baseUrl = getApiBaseUrl();
+    const baseUrl = getApiBaseUrl();
 
-  const token =
-  typeof window !== "undefined"
-  ? localStorage.getItem(config.JWT_STORAGE_KEY)
-  :null;
+    const token =
+    typeof window !== "undefined"
+    ? localStorage.getItem(config.JWT_STORAGE_KEY)
+    :null;
 
-  console.log("🔥 LINKEDIN PAYLOAD:",payload);
+    const res = await fetch(
+    `${baseUrl}/assistant/linkedin-drafts`,
+    {
+    method:"POST",
 
-  const res = await fetch(
-  `${baseUrl}/assistant/linkedin-activities`,
-  {
-  method:"POST",
+    headers:{
+    "Content-Type":"application/json",
+    "Authorization":`Bearer ${token}`
+    },
 
-  headers:{
-  "Content-Type":"application/json",
-  ...(token && {Authorization:`Bearer ${token}`})
-  },
+    body:JSON.stringify(payload)
 
-  body:JSON.stringify(payload)
+    });
 
-  });
+    const text = await res.text();
 
-  const text = await res.text();
+    console.log("📦 LINKEDIN RESPONSE:",text);
 
-  console.log("📦 LINKEDIN RESPONSE:",text);
+    let data;
 
-  let data;
+    try{
 
-  try{
+    data=JSON.parse(text);
 
-  data=JSON.parse(text);
+    }
+    catch{
 
-  }
-  catch{
+    throw new Error("Invalid JSON");
 
-  throw new Error("Invalid JSON");
+    }
 
-  }
+    if(data?.body && typeof data.body==="string"){
 
-  if(data?.body && typeof data.body==="string"){
+    try{
 
-  try{
+    data=JSON.parse(data.body);
 
-  data=JSON.parse(data.body);
+    }
+    catch{}
 
-  }
-  catch{}
+    }
 
-  }
+    if(!res.ok){
 
-  if(!res.ok){
+    throw new Error(data?.message || "Failed");
 
-  throw new Error(data?.message || "Failed");
+    }
 
-  }
-
-  return data;
+    return data;
 
   },
 
