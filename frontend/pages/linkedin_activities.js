@@ -17,8 +17,26 @@ export default function LinkedInActivities() {
   const [tasks, setTasks] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalHeight, setModalHeight] = useState("auto");
+  const today = new Date().toISOString().split("T")[0];
+  const [date, setDate] = useState(today);
+  const [linkedinTasks, setLinkedinTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  /* ================= WEEK ================= */
+  const getWeekRange = (dateStr) => {
+    const d = new Date(dateStr);
+    const start = new Date(d);
+    const day = start.getDay();
+    const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+    start.setDate(diff);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+
+    const format = (x) => x.toISOString().split("T")[0];
+    return { start: format(start), end: format(end) };
+  };
+
+  const week = getWeekRange(date);
 
   useEffect(() => {
     const calculateHeight = () => {
@@ -39,29 +57,123 @@ export default function LinkedInActivities() {
     return () => window.removeEventListener("resize", calculateHeight);
   }, []);
 
+  const handleDateChange = (e) => {
+    const selectedDate = e.target.value;
+    setDate(selectedDate);
+
+    if (candidateId) {
+      fetchLinkedinTasks(selectedDate); // 🔥 call API
+    }
+  };
+
+  useEffect(() => {
+    if (!candidateId) return;
+
+    const today = new Date().toISOString().split("T")[0];
+    fetchLinkedinTasks(today);
+  }, [candidateId]);
+
+  const fetchLinkedinTasks = async (date) => {
+    try {
+      setLoading(true);
+
+      // ✅ CLEAR OLD DATA FIRST
+      setLinkedinTasks([]);
+
+      const res = await authAPI.getLinkedinActivities(candidateId, date);
+
+      const parsed =
+        typeof res.body === "string" ? JSON.parse(res.body) : res;
+
+      // ✅ HANDLE NO DATA RESPONSE
+      if (!parsed.activities || parsed.activities.length === 0) {
+        setLinkedinTasks([]); // force empty
+        return;
+      }
+
+      setLinkedinTasks(parsed.activities);
+    } catch (err) {
+      console.error("❌ FETCH ERROR:", err);
+
+      setLinkedinTasks([]); // ✅ clear on error also
+
+      const errorMsg =
+        err?.response?.data?.message ||
+        err?.message ||
+        JSON.stringify(err);
+
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ================= KPI ================= */
+  const total = linkedinTasks.length;
+
+  const dueToday = linkedinTasks.filter(
+    (t) => t.due_date === today && t.status === "DUE"
+  ).length;
+
+  const inProgress = linkedinTasks.filter(
+    (t) => t.status === "IN_PROGRESS"
+  ).length;
+
+  const completed = linkedinTasks.filter(
+    (t) => t.status === "COMPLETED"
+  ).length;
+
+  /* ================= GROUP ================= */
+  const getDayIndex = (dateStr) => {
+    const d = new Date(dateStr);
+    const day = d.getDay();
+    return day === 0 ? 6 : day - 1;
+  };
+
+  const groupedTasks = Array(7)
+    .fill(null)
+    .map(() => []);
+
+  linkedinTasks.forEach((task) => {
+    if (!task.due_date) return;
+    const index = getDayIndex(task.due_date);
+    groupedTasks[index].push(task);
+  });
+
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] p-6">
-
+      
       {/* HEADER */}
       <div className="flex items-center justify-between mb-6 sticky top-[64px] z-10 bg-[var(--bg-primary)] pb-4">
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={() => router.push("/dashboard")}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg">
-             ⬅ Back
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg"
+          >
+            ⬅ Back
           </button>
-          <h1 className="text-2xl font-semibold">LinkedIn Activities</h1>
+
+          <div>
+            <h1 className="text-2xl font-semibold">
+              LinkedIn Activities of {candidateId}
+            </h1>
+            <p className="text-sm text-gray-400">
+              {week.start} → {week.end}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 border border-[var(--border-color)] px-4 py-2 rounded-lg">
-            <Calendar size={16} />
-            <span>21 Mar 2026</span>
-          </div>
+          <input
+            type="date"
+            value={date}
+            onChange={handleDateChange}
+            className="p-2 rounded border"
+          />
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-green px-4 py-2 rounded-lg  px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
           >
             <Plus size={16} /> Add Task
           </button>
@@ -70,50 +182,149 @@ export default function LinkedInActivities() {
 
       {/* KPI */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        {["Total", "Due Today", "In Progress", "Completed"].map((item) => (
-          <div key={item} className="bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--border-color)]">
-            <p className="text-[var(--text-secondary)] text-sm">{item}</p>
-            <h2 className="text-2xl font-bold mt-2">{tasks.length}</h2>
+        {[
+          { label: "Total", value: total },
+          { label: "Due Today", value: dueToday },
+          { label: "In Progress", value: inProgress },
+          { label: "Completed", value: completed },
+        ].map((item) => (
+          <div className="bg-[var(--bg-secondary)] p-5 rounded-xl border border-[var(--border-color)]">
+            <p className="text-gray-400 text-sm">{item.label}</p>
+            <h2 className="text-3xl font-bold mt-2">{item.value}</h2>
           </div>
         ))}
       </div>
 
-      {/* WEEK GRID */}
-      <div className="grid grid-cols-7 gap-4">
-        {weekDays.map((day) => (
-          <div
-            key={day}
-            className="bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-color)] p-3 min-h-[260px]"
-          >
-            <h3 className="text-sm text-[var(--text-secondary)] mb-3">{day}</h3>
+      {/* LOADING */}
+      {loading && (
+        <div className="text-center mt-20 text-gray-400">
+          Loading activities...
+        </div>
+      )}
 
-            {tasks.length === 0 ? (
-              <div className="text-center text-[var(--text-secondary)] text-xs mt-10">
-                📭 No tasks
-              </div>
-            ) : (
-              tasks.map((task, i) => (
-                <div key={i} className="p-3 rounded-lg border border-[var(--border-color)] mb-2">
-                  <span className={`text-xs px-2 py-1 rounded ${taskTypeStyles[task.task_type]}`}>
+      {/* EMPTY STATE (PRO UI) */}
+      {!loading && linkedinTasks.length === 0 && (
+        <div className="flex flex-col items-center justify-center mt-24">
+
+          {/* ICON */}
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mb-6 animate-float">
+            <span className="text-3xl">📭</span>
+          </div>
+
+          {/* TITLE */}
+          <h2 className="text-2xl font-semibold mb-2">
+            No LinkedIn Activities Found
+          </h2>
+
+          {/* SUBTEXT */}
+          <p className="text-gray-400 text-sm max-w-md text-center">
+            There are no activities scheduled for this selected date or week.
+          </p>
+        </div>
+      )}
+
+      {/* LIST VIEW (PRO UI) */}
+      {!loading && linkedinTasks.length > 0 && (
+        <div className="space-y-5">
+          {linkedinTasks.map((task) => (
+            <div
+              key={task.task_id}
+              className="group relative rounded-2xl p-[1px] bg-gradient-to-r from-blue-500/30 via-purple-500/20 to-transparent hover:from-blue-500/60 transition-all duration-300"
+            >
+              <div className="card-hover bg-[#020617]/90 backdrop-blur-xl rounded-3xl p-5 flex justify-between items-start">
+
+                {/* LEFT ACCENT BAR */}
+                <div
+                  className={`absolute left-0 top-0 h-full w-1 rounded-l-2xl ${
+                    task.status === "COMPLETED"
+                      ? "bg-green-500"
+                      : task.status === "IN_PROGRESS"
+                      ? "bg-blue-500"
+                      : "bg-yellow-400"
+                  }`}
+                />
+
+                {/* LEFT */}
+                <div className="flex gap-4">
+                  
+                  {/* ICON */}
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
+                    {task.task_type?.[0]}
+                  </div>
+
+                  {/* CONTENT */}
+                  <div>
+                    <h3 className="text-lg font-semibold tracking-wide group-hover:text-blue-400 transition">
+                      {task.title}
+                    </h3>
+
+                    <p className="text-sm text-gray-400 mt-1">
+                      {task.what_to_do}
+                    </p>
+
+                    <div className="flex items-center gap-3 mt-3 text-xs text-gray-500">
+                      <span>📅 {task.due_date}</span>
+                      <span>•</span>
+                      <span className="uppercase tracking-wide">
+                        {task.task_type}
+                      </span>
+                    </div>
+
+                    {/* EXTRA */}
+                    {task.task_type === "TIPS" && (
+                      <p className="text-xs mt-2 text-yellow-400">
+                        💡 {task.tips_content}
+                      </p>
+                    )}
+
+                    {task.task_type === "OUTREACH" && (
+                      <p className="text-xs mt-2 text-blue-400">
+                        👤 {task.recipient_name} ({task.recipient_title})
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* RIGHT */}
+                <div className="flex flex-col items-end gap-3">
+
+                  {/* STATUS */}
+                  <span
+                    className={`text-[10px] px-3 py-1 rounded-full font-medium tracking-wide ${
+                      task.status === "COMPLETED"
+                        ? "bg-green-500/10 text-green-400"
+                        : task.status === "IN_PROGRESS"
+                        ? "bg-blue-500/10 text-blue-400"
+                        : "bg-yellow-500/10 text-yellow-400"
+                    }`}
+                  >
+                    {task.status}
+                  </span>
+
+                  {/* TYPE */}
+                  <span className="text-xs text-gray-400 uppercase tracking-wide">
                     {task.task_type}
                   </span>
-                  <h4 className="text-sm mt-2 font-medium">{task.title}</h4>
-                  <p className="text-xs text-[var(--text-secondary)]">{task.what_to_do}</p>
-                </div>
-              ))
-            )}
-          </div>
-        ))}
-      </div>
 
-      {/* POPUP */}
+                  {/* TIME */}
+                  <span className="text-[11px] text-gray-500">
+                    {new Date(task.created_at).toLocaleTimeString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* POPUP (UNCHANGED) */}
       {isModalOpen && (
         <TaskPopup
-          candidateId={candidateId} 
-          modalHeight={modalHeight} 
+          candidateId={candidateId}
+          modalHeight={modalHeight}
           onClose={() => setIsModalOpen(false)}
           onSave={(task) => {
-            setTasks([...tasks, task]);
+            setLinkedinTasks((prev) => [...prev, task]);
             setIsModalOpen(false);
           }}
         />
