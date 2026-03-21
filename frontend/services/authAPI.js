@@ -21,49 +21,49 @@ const makeAPIRequest = async (endpoint, options = {}) => {
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
 
-  console.log("🌐 API:", url);
-
   const token =
     typeof window !== "undefined"
       ? localStorage.getItem(config.JWT_STORAGE_KEY)
       : null;
 
-  let res;
-
   try {
-    res = await fetch(url, {
+    const res = await fetch(url, {
       method: options.method || "GET",
       body: options.body,
       headers: {
         "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
-  } catch (err) {
-    console.error("❌ NETWORK ERROR:", err);
-    throw new Error("Network error - backend not reachable");
-  }
 
-  const text = await res.text();
-  let data;
+    const text = await res.text();
 
-  try {
-    data = JSON.parse(text);
-  } catch {
-    throw new Error("Invalid JSON response");
-  }
-
-  if (data?.body && typeof data.body === "string") {
+    let data;
     try {
-      data = JSON.parse(data.body);
-    } catch {}
-  }
+      data = JSON.parse(text);
+    } catch {
+      throw new AuthAPIError("Invalid JSON response", res.status);
+    }
 
-  if (!res.ok) {
-    throw new Error(data?.message || "API Error");
-  }
+    // Handle Lambda proxy response
+    if (data?.body && typeof data.body === "string") {
+      try {
+        data = JSON.parse(data.body);
+      } catch {}
+    }
 
-  return data;
+    if (!res.ok) {
+      throw new AuthAPIError(
+        data?.message || data?.error || "API Error",
+        res.status
+      );
+    }
+
+    return data;
+  } catch (err) {
+    console.error("🔥 API ERROR:", err);
+    throw err;
+  }
 };
 
 // 🚀 ALL API METHODS
@@ -87,14 +87,33 @@ export const authAPI = {
     return makeAPIRequest(`/assistant/candidate/${candidateId}`);
   },
 
-  // 🚀 GITHUB ACTIVITIES (WEEKLY)
+  // ============================
+  // 🚀 PORTFOLIO APIs (NEW)
+  // ============================
+
+  // 🔹 GET ALL PORTFOLIOS (you must add backend GET)
+  getPortfolios: async () => {
+    return makeAPIRequest("/portfolio");
+  },
+
+  // 🔹 CREATE / UPDATE (same API)
+  savePortfolio: async (payload) => {
+    return makeAPIRequest("/portfolio", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // ============================
+  // EXISTING APIs (unchanged)
+  // ============================
+
   getGithubActivities: async (candidateId, date) => {
     return makeAPIRequest(
       `/assistant/candidate/${candidateId}/github-activities?date=${date}`
     );
   },
 
-  // 💼 LINKEDIN ACTIVITIES (WEEKLY)
   getLinkedinActivities: async (candidateId, date) => {
     return makeAPIRequest(
       `/assistant/candidate/${candidateId}/linkedin-activities?date=${date}`
@@ -141,149 +160,25 @@ export const authAPI = {
 
   // ✅ NEW API (IMPORTANT)
   createJobApplication: async (payload) => {
-    const baseUrl = getApiBaseUrl();
-
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem(config.JWT_STORAGE_KEY)
-        : null;
-
-    console.log("🔐 TOKEN:", token);
-    console.log("🔥 PAYLOAD:", payload);
-
-    const res = await fetch(`${baseUrl}/assistant/job-drafts`, {
+    return makeAPIRequest("/assistant/job-drafts", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }), // ✅ FIXED
-      },
-      body: JSON.stringify(payload), // ✅ normal (no wrapping)
-    });
-
-    const text = await res.text();
-    console.log("📦 RESPONSE:", text);
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error("Invalid JSON");
-    }
-
-    if (data?.body && typeof data.body === "string") {
-      try {
-        data = JSON.parse(data.body);
-      } catch {}
-    }
-
-    if (!res.ok) {
-      console.error("❌ ERROR:", data);
-      throw new Error(data?.message || "Failed");
-    }
-
-    return data;
-  },
-
-
-  addProject: async (payload) => {
-    const baseUrl = getApiBaseUrl();
-
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem(config.JWT_STORAGE_KEY)
-        : null;
-    const res = await fetch(`${baseUrl}/assistant/github-activities`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }), // ✅ FIXED
-      },
       body: JSON.stringify(payload),
     });
-
-    const text = await res.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error("Invalid JSON");
-    }
-
-    if (data?.body && typeof data.body === "string") {
-      try {
-        data = JSON.parse(data.body);
-      } catch {}
-    }
-
-    if (!res.ok) {
-      console.error("❌ ERROR:", data);
-      throw new Error(data?.message || "Failed to add/update project");
-    }
-    return data;
   },
 
-  // 💼 CREATE LINKEDIN ACTIVITY
-  createLinkedinActivity: async (payload) => {
-
-    const baseUrl = getApiBaseUrl();
-
-    const token =
-    typeof window !== "undefined"
-    ? localStorage.getItem(config.JWT_STORAGE_KEY)
-    :null;
-
-    const res = await fetch(
-    `${baseUrl}/assistant/linkedin-drafts`,
-    {
-    method:"POST",
-
-    headers:{
-    "Content-Type":"application/json",
-    "Authorization":`Bearer ${token}`
-    },
-
-    body:JSON.stringify(payload)
-
+  addProject: async (payload) => {
+    return makeAPIRequest("/assistant/github-activities", {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
-
-    const text = await res.text();
-
-    console.log("📦 LINKEDIN RESPONSE:",text);
-
-    let data;
-
-    try{
-
-    data=JSON.parse(text);
-
-    }
-    catch{
-
-    throw new Error("Invalid JSON");
-
-    }
-
-    if(data?.body && typeof data.body==="string"){
-
-    try{
-
-    data=JSON.parse(data.body);
-
-    }
-    catch{}
-
-    }
-
-    if(!res.ok){
-
-    throw new Error(data?.message || "Failed");
-
-    }
-
-    return data;
-
   },
 
+  createLinkedinActivity: async (payload) => {
+    return makeAPIRequest("/assistant/linkedin-drafts", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 export default config;
