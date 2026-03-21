@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { authAPI } from "../services/authAPI";
-import { useSortableData } from "../hooks/sortableData"; // ✅ IMPORT HOOK
+import { useSortableData } from "../hooks/sortableData";
 
 export default function JobApplications() {
   const router = useRouter();
@@ -14,6 +14,8 @@ export default function JobApplications() {
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const today = new Date().toISOString().split("T")[0];
+
   const [form, setForm] = useState({
     company: "",
     role: "",
@@ -21,9 +23,8 @@ export default function JobApplications() {
     job_link: "",
     applied_via: "",
     employment_type: "",
+    application_date: today, // ✅ NEW FIELD
   });
-
-  const today = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
     setDate(today);
@@ -89,6 +90,7 @@ export default function JobApplications() {
       form.job_link &&
       form.applied_via &&
       form.employment_type &&
+      form.application_date && // ✅ VALIDATION
       form.job_link.startsWith("http")
     );
   };
@@ -110,6 +112,7 @@ export default function JobApplications() {
         application_link: form.job_link.trim(),
         applied_via: form.applied_via,
         employment_type: form.employment_type,
+        application_date: form.application_date, // ✅ ADDED
       };
 
       await authAPI.createJobApplication(payload);
@@ -125,6 +128,7 @@ export default function JobApplications() {
         job_link: "",
         applied_via: "",
         employment_type: "",
+        application_date: today,
       });
 
       fetchData();
@@ -166,7 +170,6 @@ export default function JobApplications() {
         </div>
       </div>
 
-      {/* TITLE */}
       <h1 className="text-2xl font-semibold mb-6">
         Job Applications ({startDate} → {endDate})
       </h1>
@@ -188,7 +191,7 @@ export default function JobApplications() {
                 onClick={() => requestSort("application_date", "date")}
                 className="p-3 text-left cursor-pointer"
               >
-                Date{" "}
+                Application Date{" "}
                 {sortConfig?.key === "application_date"
                   ? sortConfig.direction === "asc"
                     ? "↑"
@@ -197,7 +200,20 @@ export default function JobApplications() {
               </th>
 
               <th className="p-3 text-left">Type</th>
-              <th className="p-3 text-left">Exp</th>
+
+              {/* ✅ SORTABLE EXPERIENCE */}
+              <th
+                onClick={() => requestSort("experience", "number")}
+                className="p-3 text-left cursor-pointer"
+              >
+                Exp{" "}
+                {sortConfig?.key === "experience"
+                  ? sortConfig.direction === "asc"
+                    ? "↑"
+                    : "↓"
+                  : ""}
+              </th>
+
               <th className="p-3 text-left">Via</th>
               <th className="p-3 text-left">Job Link</th>
               <th className="p-3 text-left">Status</th>
@@ -282,6 +298,16 @@ export default function JobApplications() {
               <Input label="Company" required name="company" onChange={handleChange} />
               <Input label="Role" required name="role" onChange={handleChange} />
               <Input label="Experience" required name="experience" onChange={handleChange} />
+
+              {/* ✅ NEW FIELD */}
+              <Input
+                label="Application Date"
+                type="date"
+                required
+                name="application_date"
+                value={form.application_date}
+                onChange={handleChange}
+              />
 
               <Select label="Type" required name="employment_type" onChange={handleChange}
                 options={["Full-Time", "Part-Time", "Internship"]} />
