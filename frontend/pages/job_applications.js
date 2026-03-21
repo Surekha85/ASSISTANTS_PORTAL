@@ -14,6 +14,11 @@ export default function JobApplications() {
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // ✅ EDIT STATES
+  const [editMode, setEditMode] = useState(false);
+  const [editJobId, setEditJobId] = useState(null);
+  const [originalForm, setOriginalForm] = useState(null);
+
   const today = new Date().toISOString().split("T")[0];
 
   const [form, setForm] = useState({
@@ -23,7 +28,7 @@ export default function JobApplications() {
     job_link: "",
     applied_via: "",
     employment_type: "",
-    application_date: today, // ✅ NEW FIELD
+    application_date: today,
   });
 
   useEffect(() => {
@@ -90,11 +95,32 @@ export default function JobApplications() {
       form.job_link &&
       form.applied_via &&
       form.employment_type &&
-      form.application_date && // ✅ VALIDATION
+      form.application_date &&
       form.job_link.startsWith("http")
     );
   };
 
+  /* ================= EDIT ================= */
+  const handleEdit = (job) => {
+    setEditMode(true);
+    setEditJobId(job.job_id);
+
+    const prefill = {
+      company: job.company_name || "",
+      role: job.job_title || "",
+      experience: job.experience || "",
+      job_link: job.application_link || "",
+      applied_via: job.applied_via || "",
+      employment_type: job.employment_type || "",
+      application_date: job.application_date || today,
+    };
+
+    setForm(prefill);
+    setOriginalForm(prefill);
+    setShowModal(true);
+  };
+
+  /* ================= SUBMIT ================= */
   const handleSubmit = async () => {
     if (!isFormValid()) {
       alert("Please fill all fields correctly ❌");
@@ -104,37 +130,59 @@ export default function JobApplications() {
     try {
       setSubmitting(true);
 
-      const payload = {
-        jaa_candidate_id: String(candidateId),
-        company_name: form.company,
-        job_title: form.role,
-        experience: Number(form.experience),
-        application_link: form.job_link.trim(),
-        applied_via: form.applied_via,
-        employment_type: form.employment_type,
-        application_date: form.application_date, // ✅ ADDED
-      };
+      if (editMode) {
+        const updatedFields = {};
 
-      await authAPI.createJobApplication(payload);
+        if (form.company !== originalForm.company)
+          updatedFields.company_name = form.company;
 
-      alert("Job application created successfully ✅");
+        if (form.role !== originalForm.role)
+          updatedFields.job_title = form.role;
+
+        if (form.experience !== originalForm.experience)
+          updatedFields.experience = Number(form.experience);
+
+        if (form.job_link !== originalForm.job_link)
+          updatedFields.application_link = form.job_link.trim();
+
+        if (form.applied_via !== originalForm.applied_via)
+          updatedFields.applied_via = form.applied_via;
+
+        if (form.employment_type !== originalForm.employment_type)
+          updatedFields.employment_type = form.employment_type;
+
+        if (form.application_date !== originalForm.application_date)
+          updatedFields.application_date = form.application_date;
+
+        await authAPI.createJobApplication({
+          job_id: editJobId,
+          ...updatedFields,
+        });
+
+        alert("Updated successfully ✅");
+      } else {
+        const payload = {
+          jaa_candidate_id: String(candidateId),
+          company_name: form.company,
+          job_title: form.role,
+          experience: Number(form.experience),
+          application_link: form.job_link.trim(),
+          applied_via: form.applied_via,
+          employment_type: form.employment_type,
+          application_date: form.application_date,
+        };
+
+        await authAPI.createJobApplication(payload);
+
+        alert("Created successfully ✅");
+      }
 
       setShowModal(false);
-
-      setForm({
-        company: "",
-        role: "",
-        experience: "",
-        job_link: "",
-        applied_via: "",
-        employment_type: "",
-        application_date: today,
-      });
-
+      setEditMode(false);
       fetchData();
     } catch (err) {
       console.error("❌ ERROR:", err);
-      alert(err.message || "Something went wrong ❌");
+      alert("Something went wrong ❌");
     } finally {
       setSubmitting(false);
     }
@@ -162,7 +210,10 @@ export default function JobApplications() {
           />
 
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setEditMode(false);
+              setShowModal(true);
+            }}
             className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
           >
             + Add Job Application
@@ -186,32 +237,20 @@ export default function JobApplications() {
               <th className="p-3 text-left">Job</th>
               <th className="p-3 text-left">Company</th>
 
-              {/* ✅ SORTABLE DATE */}
               <th
                 onClick={() => requestSort("application_date", "date")}
                 className="p-3 text-left cursor-pointer"
               >
-                Application Date{" "}
-                {sortConfig?.key === "application_date"
-                  ? sortConfig.direction === "asc"
-                    ? "↑"
-                    : "↓"
-                  : ""}
+                Application Date
               </th>
 
               <th className="p-3 text-left">Type</th>
 
-              {/* ✅ SORTABLE EXPERIENCE */}
               <th
                 onClick={() => requestSort("experience", "number")}
                 className="p-3 text-left cursor-pointer"
               >
-                Exp{" "}
-                {sortConfig?.key === "experience"
-                  ? sortConfig.direction === "asc"
-                    ? "↑"
-                    : "↓"
-                  : ""}
+                Exp
               </th>
 
               <th className="p-3 text-left">Via</th>
@@ -223,19 +262,20 @@ export default function JobApplications() {
           </thead>
 
           <tbody>
-            {!loading && sortedItems.length === 0 && (
-              <tr>
-                <td colSpan="11" className="text-center p-6 text-gray-400">
-                  No candidates found
-                </td>
-              </tr>
-            )}
-
             {sortedItems.map((j, i) => (
               <tr key={i} className="border-t border-gray-700 hover:bg-[#1e293b]">
-
                 <td className="p-3">{i + 1}</td>
-                <td className="p-3 font-medium">{j.job_title}</td>
+
+                <td className="p-3 font-medium">
+                  {j.job_title}
+                  <button
+                    onClick={() => handleEdit(j)}
+                    className="ml-2 text-blue-400 hover:text-blue-600"
+                  >
+                    ✏️
+                  </button>
+                </td>
+
                 <td className="p-3">{j.company_name}</td>
                 <td className="p-3">{j.application_date}</td>
                 <td className="p-3">{j.employment_type}</td>
@@ -244,38 +284,22 @@ export default function JobApplications() {
 
                 <td className="p-3">
                   {j.application_link ? (
-                    <a
-                      href={j.application_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 underline"
-                    >
+                    <a href={j.application_link} target="_blank" className="text-blue-400 underline">
                       Open
                     </a>
                   ) : "-"}
                 </td>
 
-                <td className="p-3">
-                  <span className="px-2 py-1 text-xs rounded bg-yellow-600">
-                    {j.approval_status}
-                  </span>
-                </td>
-
+                <td className="p-3">{j.approval_status}</td>
                 <td className="p-3">{j.ats_score}</td>
 
                 <td className="p-3">
                   {j.resume_s3_url ? (
-                    <a
-                      href={j.resume_s3_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 underline"
-                    >
+                    <a href={j.resume_s3_url} target="_blank" className="text-blue-400 underline">
                       View
                     </a>
                   ) : "-"}
                 </td>
-
               </tr>
             ))}
           </tbody>
@@ -283,23 +307,23 @@ export default function JobApplications() {
         </table>
       </div>
 
-      {/* MODAL */}
+      {/* MODAL (UNCHANGED UI) */}
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/60">
-
           <div className="w-full max-w-2xl bg-[#1e293b] rounded-2xl p-6">
 
             <div className="flex justify-between mb-6">
-              <h2 className="text-xl font-semibold">Create Job Application</h2>
+              <h2 className="text-xl font-semibold">
+                {editMode ? "Update Job Application" : "Create Job Application"}
+              </h2>
               <button onClick={() => setShowModal(false)}>✕</button>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Company" required name="company" onChange={handleChange} />
-              <Input label="Role" required name="role" onChange={handleChange} />
-              <Input label="Experience" required name="experience" onChange={handleChange} />
+              <Input label="Company" required name="company" value={form.company} onChange={handleChange} />
+              <Input label="Role" required name="role" value={form.role} onChange={handleChange} />
+              <Input label="Experience" required name="experience" value={form.experience} onChange={handleChange} />
 
-              {/* ✅ NEW FIELD */}
               <Input
                 label="Application Date"
                 type="date"
@@ -309,14 +333,14 @@ export default function JobApplications() {
                 onChange={handleChange}
               />
 
-              <Select label="Type" required name="employment_type" onChange={handleChange}
+              <Select label="Type" required name="employment_type" value={form.employment_type} onChange={handleChange}
                 options={["Full-Time", "Part-Time", "Internship"]} />
 
-              <Select label="Applied Via" required name="applied_via" onChange={handleChange}
+              <Select label="Applied Via" required name="applied_via" value={form.applied_via} onChange={handleChange}
                 options={["LinkedIn", "Indeed", "Referral"]} />
 
               <div className="col-span-2">
-                <Input label="Job Link" required name="job_link" onChange={handleChange} />
+                <Input label="Job Link" required name="job_link" value={form.job_link} onChange={handleChange} />
               </div>
             </div>
 
@@ -328,20 +352,15 @@ export default function JobApplications() {
               <button
                 onClick={handleSubmit}
                 disabled={!isFormValid() || submitting}
-                className={`px-4 py-2 rounded ${
-                  isFormValid()
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-gray-500 cursor-not-allowed"
-                }`}
+                className="px-4 py-2 rounded bg-green-600"
               >
-                {submitting ? "Saving..." : "Submit"}
+                {submitting ? "Saving..." : editMode ? "Update" : "Submit"}
               </button>
             </div>
 
           </div>
         </div>
       )}
-
     </div>
   );
 }
