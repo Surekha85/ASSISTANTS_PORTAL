@@ -197,6 +197,70 @@ export const authAPI = {
     }).then(res => res.json());
   },
 
+  // 💼 CREATE LINKEDIN ACTIVITY
+  createLinkedinActivity: async (payload) => {
+
+  const baseUrl = getApiBaseUrl();
+
+  const token =
+  typeof window !== "undefined"
+  ? localStorage.getItem(config.JWT_STORAGE_KEY)
+  :null;
+
+  console.log("🔥 LINKEDIN PAYLOAD:",payload);
+
+  const res = await fetch(
+  `${baseUrl}/assistant/linkedin-activities`,
+  {
+  method:"POST",
+
+  headers:{
+  "Content-Type":"application/json",
+  ...(token && {Authorization:`Bearer ${token}`})
+  },
+
+  body:JSON.stringify(payload)
+
+  });
+
+  const text = await res.text();
+
+  console.log("📦 LINKEDIN RESPONSE:",text);
+
+  let data;
+
+  try{
+
+  data=JSON.parse(text);
+
+  }
+  catch{
+
+  throw new Error("Invalid JSON");
+
+  }
+
+  if(data?.body && typeof data.body==="string"){
+
+  try{
+
+  data=JSON.parse(data.body);
+
+  }
+  catch{}
+
+  }
+
+  if(!res.ok){
+
+  throw new Error(data?.message || "Failed");
+
+  }
+
+  return data;
+
+  },
+
 };
 
 export default config;
