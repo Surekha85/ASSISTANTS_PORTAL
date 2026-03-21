@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { authAPI } from "../services/authAPI";
 import { useSortableData } from "../hooks/sortableData";
 import { ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { ExternalLink, Download } from "lucide-react";
 
 export default function JobApplications() {
   const router = useRouter();
@@ -236,14 +237,14 @@ export default function JobApplications() {
                 <div>
                   <p className="font-semibold text-lg">{j.job_title}</p>
                   <p className="text-sm text-gray-400">
-                    {j.company_name} • {j.experience}
+                    {j.company_name}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-4">
 
                   <span className="text-green-400 text-sm">
-                    ATS {j.ats_score || 0}%
+                    Application Date:  {j.application_date}
                   </span>
 
                   <span className="px-3 py-1 rounded-full text-xs bg-yellow-400/20 text-yellow-300">
@@ -283,14 +284,25 @@ export default function JobApplications() {
                     <p>{j.employment_type}</p>
                   </div>
 
+                  <div>
+                    <p className="text-gray-400">Experience</p>
+                    <p>{j.experience}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-gray-400">ATS Score</p>
+                    <p>{j.ats_score}</p>
+                  </div>
+
                   <div className="col-span-2 flex gap-3 mt-3">
 
                     <button
                       onClick={() =>
                         window.open(j.application_link, "_blank")
                       }
-                      className="px-4 py-2 rounded text-white btn-blue"
+                      className="px-4 py-2 rounded text-white btn-blue flex items-center gap-2"
                     >
+                      <ExternalLink size={16} />
                       View Application
                     </button>
 
@@ -298,8 +310,9 @@ export default function JobApplications() {
                       onClick={() =>
                         window.open(j.resume_s3_url, "_blank")
                       }
-                      className="px-4 py-2 rounded text-white btn-green"
+                      className="px-4 py-2 rounded text-white btn-green flex items-center gap-2"
                     >
+                      <Download size={16} />
                       Download Resume
                     </button>
 
