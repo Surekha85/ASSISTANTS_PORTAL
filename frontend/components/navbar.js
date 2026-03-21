@@ -60,7 +60,7 @@ export default function Navbar() {
   if (!mounted) return null;
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-[#0f172a] border-b border-slate-800">
+    <header className="sticky top-0 z-50 w-full bg-[#0f172a] border-b border-slate-800" id="app-navbar">
       <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
 
         {/* LOGO */}
@@ -73,7 +73,7 @@ export default function Navbar() {
             className="rounded-full bg-white"
           />
           <span className="text-xl font-bold text-blue-400">
-            Jobsyme Assistant
+            Jobsyme
           </span>
         </div>
 

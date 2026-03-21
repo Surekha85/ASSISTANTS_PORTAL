@@ -15,21 +15,33 @@ html, body {
   text-rendering: optimizeLegibility;
 }
 
-/* ===================
-   Light Theme
-=================== */
+/* Light Theme */
 .light {
-  background-color: #ffffff;
-  color: #000000;
+  --bg: #ffffff;
+  --bg-secondary: #f1f5f9;
+  --card: #ffffff;
+  --text: #000000;
+  --text-secondary: #6b7280;
+  --border: #e5e7eb;
+
+  /* 🔥 STRONGER PRIMARY */
+  --primary: #2563eb;
+  --primary-contrast: #ffffff;
 }
 
-/* ===================
-   Dark Theme
-=================== */
+/* Dark Theme */
 .dark {
-  background-color: #0f172a;
-  color: #ffffff;
+  --bg: #0f172a;
+  --bg-secondary: #020617;
+  --card: #111827;
+  --text: #ffffff;
+  --text-secondary: #9ca3af;
+  --border: #1f2937;
+
+  --primary: #3b82f6;
+  --primary-contrast: #ffffff;
 }
+
 
 /* ===================
    Link Hover Effects
