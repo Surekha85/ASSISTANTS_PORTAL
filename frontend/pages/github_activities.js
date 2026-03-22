@@ -251,7 +251,6 @@ export default function GithubActivities() {
         <div className="space-y-6">
 
           {/* CURRENT PROJECT */}
-          {/* 🚀 CURRENT PROJECT HEADER CARD */}
           <div className="p-6 rounded-xl border bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700">
 
             <div className="flex justify-between items-center mb-4">
