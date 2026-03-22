@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { authAPI } from "../services/authAPI";
 import { useSortableData } from "../hooks/sortableData";
-import { ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil, Target, Zap } from "lucide-react";
 import { ExternalLink, Download } from "lucide-react";
 
 export default function JobApplications() {
@@ -24,6 +24,7 @@ export default function JobApplications() {
   const [resumeFile, setResumeFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [modalHeight, setModalHeight] = useState("auto");
+  const [showQA, setShowQA] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
   const [editJob, setEditJob] = useState(null);
@@ -128,13 +129,25 @@ export default function JobApplications() {
   };
 
   /* ================= SUBMIT ================= */
-  const mapExperienceToNumber = (exp) => {
-    if (exp === "0-1") return 1;
-    if (exp === "1-2") return 2;
-    if (exp === "2-3") return 3;
-    if (exp === "3-4") return 4;
-    if (exp === "4-5") return 5;
-    return Number(exp) || 1;
+  const handleDownload = async (url) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      // ✅ GET FILE EXTENSION FROM URL
+      const fileExt = url.split(".").pop().split("?")[0]; // pdf / docx
+      const candidateName = `${selectedCandidate?.first_name || "candidate"}_${selectedCandidate?.last_name || ""}`.trim();
+
+      const link = document.createElement("a");
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `${candidateName}_resume.${fileExt}`
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+    } catch (e) {
+      console.error(e);
+      showToast("Download failed ❌");
+    }
   };
 
   const handleSubmit = async () => {
@@ -227,9 +240,14 @@ export default function JobApplications() {
       employment_type: job.employment_type || "Full-time",
       experience: job.experience || "",
       ats_score: job.ats_score || "",
-      ai_detection_score: job.ai_detection_score || "",
-      qaList: job.que
+      ai_detection_score: job.ai_detection_score || ""
     });
+
+    setQaList(
+      job.questionsAndAnswers && job.questionsAndAnswers.length > 0
+        ? job.questionsAndAnswers
+        : [{ question: "", answer: "" }]
+    );
 
     setShowModal(true);
   };
@@ -309,12 +327,22 @@ export default function JobApplications() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-4">
+                {/* RIGHT SIDE */}
+                <div className="flex items-center gap-3 flex-wrap">
 
-                  <span className="text-green-400 text-sm">
-                    Application Date:  {j.application_date}
+                  {/* ATS SCORE */}
+                  <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs ${getColor(j.ats_score)}`}>
+                    <Target size={14} />
+                    {j.ats_score || 0}%
                   </span>
 
+                  {/* AI SCORE */}
+                  <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs ${getColor(100 - j.ai_detection_score)}`}>
+                    <Zap size={14} />
+                    AI {j.ai_detection_score || 0}%
+                  </span>
+
+                  {/* STATUS */}
                   <span className="px-3 py-1 rounded-full text-xs bg-yellow-400/20 text-yellow-300">
                     {j.approval_status || "Pending"}
                   </span>
@@ -342,32 +370,52 @@ export default function JobApplications() {
               {isExpanded && (
                 <div className="mt-4 grid grid-cols-2 gap-4 text-sm border-t pt-4 animate-fade-in">
 
+                  {/* DETAILS */}
                   <div>
                     <p className="text-gray-400">Applied Via</p>
-                    <p>{j.applied_via}</p>
+                    <p>{j.applied_via || "-"}</p>
                   </div>
 
                   <div>
                     <p className="text-gray-400">Employment</p>
-                    <p>{j.employment_type}</p>
+                    <p>{j.employment_type || "-"}</p>
                   </div>
 
                   <div>
                     <p className="text-gray-400">Experience</p>
-                    <p>{j.experience}</p>
+                    <p>{j.experience || "-"}</p>
                   </div>
 
                   <div>
                     <p className="text-gray-400">ATS Score</p>
-                    <p>{j.ats_score}</p>
+                    <p>{j.ats_score || "-"}</p>
                   </div>
 
+                  <div>
+                    <p className="text-gray-400">AI Detection</p>
+                    <p>{j.ai_detection_score || "-"}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-gray-400">Status</p>
+                    <p>{j.approval_status || "Pending"}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-gray-400">Application Date</p>
+                    <p>{j.application_date || "-"}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-gray-400">Created At</p>
+                    <p>{j.created_at ? j.created_at.split("T")[0] : "-"}</p>
+                  </div>
+
+                  {/* ACTION BUTTONS */}
                   <div className="col-span-2 flex gap-3 mt-3">
 
                     <button
-                      onClick={() =>
-                        window.open(j.application_link, "_blank")
-                      }
+                      onClick={() => window.open(j.application_link, "_blank")}
                       className="px-4 py-2 rounded text-white btn-blue flex items-center gap-2"
                     >
                       <ExternalLink size={16} />
@@ -375,9 +423,7 @@ export default function JobApplications() {
                     </button>
 
                     <button
-                      onClick={() =>
-                        window.open(j.resume_s3_url, "_blank")
-                      }
+                      onClick={() => handleDownload(j.resume_s3_url)}
                       className="px-4 py-2 rounded text-white btn-green flex items-center gap-2"
                     >
                       <Download size={16} />
@@ -385,6 +431,74 @@ export default function JobApplications() {
                     </button>
 
                   </div>
+
+                  {/* 🔥 QUESTIONS & ANSWERS SECTION */}
+                  {j.questionsAndAnswers && j.questionsAndAnswers.length > 0 && (
+                    <div className="col-span-2 mt-4">
+
+                      {/* HEADER + HIDE BUTTON */}
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-gray-400 text-sm">
+                          Screening Questions & Answers
+                        </p>
+
+                        <button
+                            onClick={() => setShowQA(!showQA)}
+                            className="text-xs px-3 py-1 rounded-md 
+                                      bg-gray-200 text-gray-700 hover:bg-gray-300
+                                      dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600
+                                      transition"
+                          >
+                            {showQA ? "Hide" : "Show"}
+                          </button>
+                      </div>
+
+                      {showQA && (
+                        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 max-h-64 overflow-y-auto">
+
+                          <table className="w-full text-sm table-fixed text-center">
+
+                            {/* HEADER */}
+                            <thead className="bg-gray-100 dark:bg-[var(--bg-secondary)] text-gray-700 dark:text-gray-300">
+                              <tr>
+                                <th className="px-4 py-3 w-12">#</th>
+                                <th className="px-4 py-3 w-1/2">Question</th>
+                                <th className="px-4 py-3 w-1/2">Answer</th>
+                              </tr>
+                            </thead>
+
+                            {/* BODY */}
+                            <tbody>
+                              {j.questionsAndAnswers.map((qa, idx) => (
+                                <tr
+                                  key={idx}
+                                  className="border-t border-gray-200 dark:border-gray-700 
+                                            hover:bg-gray-50 dark:hover:bg-[var(--bg-secondary)] transition"
+                                >
+                                  {/* INDEX */}
+                                  <td className="px-4 py-4 text-gray-500 dark:text-gray-400">
+                                    {idx + 1}
+                                  </td>
+
+                                  {/* QUESTION */}
+                                  <td className="px-4 py-4 font-medium text-gray-800 dark:text-white break-words whitespace-normal">
+                                    {qa.question}
+                                  </td>
+
+                                  {/* ANSWER */}
+                                  <td className="px-4 py-4 text-gray-600 dark:text-gray-300 break-words whitespace-normal">
+                                    {qa.answer}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+
+                          </table>
+                        </div>
+                      )}
+
+                    </div>
+                  )}
 
                 </div>
               )}
