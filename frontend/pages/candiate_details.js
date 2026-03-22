@@ -43,20 +43,19 @@ export default function CandidateDetails() {
     <div className="h-screen flex flex-col bg-[var(--bg)] text-[var(--text)]">
 
       {/* HEADER */}
-      <div className="p-5 border-b border-[var(--border)] bg-[var(--card)] sticky top-0 z-10">
-        <button
+      <div className="flex items-center gap-4 p-5 border-b border-[var(--border)] bg-[var(--card)] sticky top-0 z-10">
+          <button
             onClick={() => router.push("/dashboard")}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white"
+            className="mb-2 px-4 py-2 rounded-lg bg-blue-600 text-white btn-blue"
           >
             ⬅ Back
           </button>
-        <h1 className="text-xl font-semibold">
-          {data.first_name} {data.last_name}
-        </h1>
-        <p className="text-sm text-[var(--text-secondary)]">
-          {data.email}
-        </p>
-      </div>
+          <div>
+            <h1 className="text-2xl font-semibold">
+              Details of  {data.first_name} {data.last_name}
+            </h1>
+          </div>
+        </div>
 
       {/* BODY */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -70,7 +69,6 @@ export default function CandidateDetails() {
           <Field label="LinkedIn" value={data.linkedin} copy={copy} copied={copied} id="linkedin" />
           <Field label="GitHub" value={data.github} copy={copy} copied={copied} id="github" />
           <Field label="Assistant" value={data.assistantAssignedTo} copy={copy} copied={copied} id="assistant" />
-          <Field label="User ID" value={data.user_id} copy={copy} copied={copied} id="userid" />
         </Section>
 
         {/* ADDRESS */}
@@ -98,19 +96,12 @@ export default function CandidateDetails() {
           {renderObject(data.dedicatedGmailAccount, copy, copied)}
         </Section>
 
-        {/* META */}
-        <Section title="Metadata">
-          <Field label="Created At" value={data.createdAt} copy={copy} copied={copied} id="created" />
-          <Field label="Updated At" value={data.updatedAt} copy={copy} copied={copied} id="updated" />
-          <Field label="Candidate ID" value={data.jaa_candidate_id} copy={copy} copied={copied} id="cid" />
-        </Section>
-
-        {/* 🔥 FALLBACK (NO FIELD MISSED EVER) */}
+        {/* 🔥 FALLBACK (NO FIELD MISSED EVER)
         <Section title="All Data (Raw)">
           <pre className="text-xs bg-[var(--bg-secondary)] p-4 rounded-lg overflow-auto">
             {JSON.stringify(data, null, 2)}
           </pre>
-        </Section>
+        </Section> */}
 
       </div>
     </div>
@@ -123,18 +114,36 @@ function renderObject(obj, copy, copied) {
 
   return Object.entries(obj).map(([k, v]) => {
     if (Array.isArray(v)) {
-      return (
-        <div key={k} className="col-span-2">
-          <p className="text-xs text-[var(--text-secondary)] mb-1">{k}</p>
-          <div className="flex flex-wrap gap-2">
-            {v.map((item, i) => (
-              <span key={i} className="px-3 py-1 rounded-full bg-[var(--bg-secondary)] text-sm">
-                {item}
-              </span>
-            ))}
-          </div>
+    return (
+        <div key={k} className="col-span-2 group border border-[var(--border)] rounded-lg p-3 bg-[var(--bg-secondary)]">
+
+        {/* LABEL */}
+        <div className="flex justify-between items-center mb-2">
+            <p className="text-xs text-[var(--text-secondary)]">{k}</p>
+
+            {/* COPY BUTTON (HOVER) */}
+            <button
+            onClick={() => copy(v.join(", "), k)}
+            className="opacity-0 group-hover:opacity-100 transition"
+            >
+            {copied === k ? <Check size={16} /> : <Copy size={16} />}
+            </button>
         </div>
-      );
+
+        {/* SKILLS LIST */}
+        <div className="flex flex-wrap gap-2">
+            {v.map((item, i) => (
+            <span
+                key={i}
+                className="px-3 py-1 rounded-full bg-[var(--bg)] text-sm"
+            >
+                {item}
+            </span>
+            ))}
+        </div>
+
+        </div>
+    );
     }
 
     return (
@@ -165,15 +174,21 @@ function Section({ title, children }) {
 /* FIELD */
 function Field({ label, value, copy, copied, id }) {
   return (
-    <div className="flex justify-between items-center border border-[var(--border)] rounded-lg px-3 py-2 bg-[var(--bg-secondary)]">
-      <div className="overflow-hidden">
-        <p className="text-xs text-[var(--text-secondary)]">{label}</p>
-        <p className="text-sm font-medium truncate">{value || "-"}</p>
-      </div>
+    <div className="group flex justify-between items-center border border-[var(--border)] rounded-lg px-3 py-2 bg-[var(--bg-secondary)]">
 
-      <button onClick={() => copy(value, id)}>
-        {copied === id ? <Check size={16} /> : <Copy size={16} />}
-      </button>
-    </div>
+        <div className="overflow-hidden">
+            <p className="text-xs text-[var(--text-secondary)]">{label}</p>
+            <p className="text-sm font-medium truncate">{value || "-"}</p>
+        </div>
+
+        {/* COPY BUTTON (HIDDEN BY DEFAULT) */}
+        <button
+            onClick={() => copy(value, id)}
+            className="opacity-0 group-hover:opacity-100 transition"
+        >
+            {copied === id ? <Check size={16} /> : <Copy size={16} />}
+        </button>
+
+        </div>
   );
 }

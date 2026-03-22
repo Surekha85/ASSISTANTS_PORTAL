@@ -459,17 +459,17 @@ export default function JobApplications() {
                                 className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-gray-700"
                               >
 
-                                <p className="text-xs text-gray-400 mb-1">
+                                <p className="text-xs text-gray-400 mb-1 text-red-600 dark:text-red-400">
                                   Question {idx + 1}
                                 </p>
                                 <p className="font-medium mb-2">
                                   {qa.question}
                                 </p>
 
-                                <p className="text-xs text-gray-400 mb-1">
+                                <p className="text-xs text-gray-400 mb-1 text-green-600 dark:text-green-400">
                                   Answer
                                 </p>
-                                <p className="text-sm text-gray-300">
+                                <p className="font-medium mb-2">
                                   {qa.answer}
                                 </p>
 

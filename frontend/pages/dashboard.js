@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { authAPI } from "../services/authAPI";
 import { useRouter } from "next/router";
+import { MapPin } from "lucide-react";
 
 export default function AssistantDashboard() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function AssistantDashboard() {
   const [expandedId, setExpandedId] = useState(null);
   const [openDropdown, setOpenDropdown] = useState(false);
   const [height, setHeight] = useState("100vh");
+
 
   const dropdownRef = useRef();
 
@@ -53,7 +55,21 @@ export default function AssistantDashboard() {
       );
 
       setCandidates(all);
-      if (all.length) setSelectedCandidate(all[0]);
+      const stored = localStorage.getItem("selectedCandidate");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+
+        // match with current candidates list
+        const match = all.find((c) => c.id === parsed.id);
+
+        if (match) {
+          setSelectedCandidate(match);
+        } else {
+          setSelectedCandidate(all[0]);
+        }
+      } else {
+        setSelectedCandidate(all[0]);
+      }
     };
 
     load();
@@ -61,6 +77,7 @@ export default function AssistantDashboard() {
 
   const handleSelect = (c) => {
     setSelectedCandidate(c);
+    localStorage.setItem("selectedCandidate", JSON.stringify(c)); // 🔥 ADD THIS
     setOpenDropdown(false);
   };
 
@@ -71,6 +88,13 @@ export default function AssistantDashboard() {
 
   const navigate = (path) => {
     if (!selectedCandidate) return;
+
+    // 🔥 SAVE BEFORE NAVIGATION
+    localStorage.setItem(
+      "selectedCandidate",
+      JSON.stringify(selectedCandidate)
+    );
+
     router.push(`${path}?candidateId=${selectedCandidate.id}`);
   };
 
@@ -144,95 +168,77 @@ export default function AssistantDashboard() {
             )}
           </div>
         </div>
+        
+        <div className="flex-1 overflow-y-auto pr-2">
 
-        {/* 🔥 LIST SCROLL ONLY */}
-        <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+          {candidates.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
 
-          {sorted.map((c) => {
-            const isActive = selectedCandidate?.id === c.id;
-            const isExpanded = expandedId === c.id;
+              <div className="text-4xl mb-4">📭</div>
 
-            return (
-              <div
-                key={c.id}
-                onClick={() => handleSelect(c)}
-                className={`p-5 rounded-2xl cursor-pointer transition
-                ${
-                  isActive
-                    ? "bg-[#144ca7] text-white"
-                    : "bg-[var(--card)] hover:bg-[var(--bg-secondary)]"
-                }`}
-              >
-                {/* TOP */}
-                <div className="flex justify-between items-center">
+              <p className="text-sm text-[var(--text-secondary)] mt-1">
+                No candidates are assigned to this assistant
+              </p>
 
-                  <div className="flex gap-4">
+            </div>
+          ) : (
+            <div className="space-y-4">
 
-                    <div className="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center">
-                      {c.first_name?.[0]}
-                    </div>
+              {sorted.map((c) => {
+                const isActive = selectedCandidate?.id === c.id;
+                const isExpanded = expandedId === c.id;
 
-                    <div>
-                      <p className="font-semibold">
-                        {c.first_name} {c.last_name}
-                      </p>
-                      <p className="text-sm opacity-80">{c.email}</p>
-                      <p className="text-xs opacity-70">
-                        {c?.jobPreferences?.preferredJobTitles?.[0]} •{" "}
-                        {c?.address?.city} •{" "}
-                        {c?.careerDetails?.yearsExperience} yrs
-                      </p>
-                    </div>
-                  </div>
+                return (
+                  <div
+                    key={c.id}
+                    onClick={() => handleSelect(c)}
+                    className={`p-5 rounded-2xl cursor-pointer transition
+                    ${
+                      isActive
+                        ? "bg-[#144ca7] text-white"
+                        : "bg-[var(--card)] hover:bg-[var(--bg-secondary)]"
+                    }`}
+                  >
+                    {/* TOP */}
+                    <div className="flex justify-between items-center">
 
-                  <div onClick={(e) => toggleExpand(e, c.id)}>
-                    {isExpanded ? <ChevronUp /> : <ChevronDown />}
-                  </div>
-                </div>
+                      <div className="flex gap-4">
 
-                {/* 🔥 EXPANDED SECTION */}
-                {isExpanded && (
-                  <div className="mt-4 grid grid-cols-2 gap-4 border-t pt-4 text-sm">
+                        {/* <div className="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center">
+                          {c.first_name?.[0]}
+                        </div> */}
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg shadow">
+                          {c.first_name?.[0]}
+                        </div>
 
-                    <div>
-                      <p className="opacity-70">Phone</p>
-                      <p className="font-medium">{c.phone}</p>
-                    </div>
-
-                    <div>
-                      <p className="opacity-70">Education</p>
-                      <p className="font-medium">
-                        {c?.careerDetails?.highestEducation}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="opacity-70">Salary</p>
-                      <p className="font-medium">
-                        ₹{c?.jobPreferences?.salaryExpectation}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="opacity-70 mb-1">Skills</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {c?.careerDetails?.skills?.map((s, i) => (
-                          <span
-                            key={i}
-                            className="px-2 py-1 text-xs rounded-full bg-white/20"
-                          >
-                            {s}
-                          </span>
-                        ))}
+                        <div>
+                          <p className="font-semibold">
+                            {c.first_name} {c.last_name}
+                          </p>
+                          <p className="text-sm opacity-80">{c.email}</p>
+                          <p className="text-xs opacity-70">
+                            {c?.address?.city} •{" "}
+                            {c?.address?.state}
+                          </p>
+                          <p  className="text-xs opacity-70">
+                            📞
+                          <span>{c.phone}</span>
+                          </p>
+                        </div>
                       </div>
+                      {c?.address?.country && (
+                        <div className="flex items-center gap-2 text-sm opacity-80">
+                          <MapPin size={16} />
+                          <span>{c.address.country}</span>
+                        </div>
+                      )}
                     </div>
-
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
 
+            </div>
+          )}
         </div>
       </main>
     </div>
