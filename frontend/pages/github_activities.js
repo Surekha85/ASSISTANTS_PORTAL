@@ -18,7 +18,15 @@ export default function GithubActivities() {
   const [visibility, setVisibility] = useState("");
   const [estimationDate, setEstimationDate] = useState("");
 
-  // ✅ Load selected candidate
+  // 🔥 TOASTER STATE
+  const [toast, setToast] = useState({ message: "", type: "" });
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast({ message: "", type: "" }), 3000);
+  };
+
+  // ✅ Load candidate
   useEffect(() => {
     const stored = localStorage.getItem("selectedCandidate");
     if (stored) {
@@ -32,7 +40,6 @@ export default function GithubActivities() {
     setDate(today);
   }, []);
 
-  // 🔥 Fetch GitHub Activities
   const fetchGithubActivities = async (candidateId, selectedDate) => {
     if (!candidateId || !selectedDate) return;
 
@@ -47,7 +54,6 @@ export default function GithubActivities() {
       );
       setData(res);
     } catch (err) {
-      console.error(err);
       setError(err.message || "Failed to fetch GitHub activities");
     } finally {
       setLoading(false);
@@ -60,9 +66,7 @@ export default function GithubActivities() {
     }
   }, [candidate, date]);
 
-  const handleDateChange = (e) => {
-    setDate(e.target.value);
-  };
+  const handleDateChange = (e) => setDate(e.target.value);
 
   const allCommits =
     data?.projects?.flatMap((p) => p.commits || []) || [];
@@ -70,25 +74,41 @@ export default function GithubActivities() {
   const totalCommits = allCommits.length;
   const currentProject = data?.projects?.[0];
 
+  // 🚀 VALIDATION
+  const validateForm = () => {
+    if (!projectName.trim())
+      return "Project Name is required";
+    if (!repoUrl.trim())
+      return "Repo URL is required";
+    if (!visibility)
+      return "Visibility is required";
+    if (!estimationDate)
+      return "Estimation Date is required";
+
+    return null;
+  };
+
   // 🚀 ADD PROJECT
   const handleAddProject = async () => {
-    try {
-      if (!projectName || !repoUrl || !visibility || !estimationDate) {
-        alert("Please fill all fields");
-        return;
-      }
+    const errorMsg = validateForm();
 
+    if (errorMsg) {
+      showToast(errorMsg, "error");
+      return;
+    }
+
+    try {
       const payload = {
         jaa_candidate_id: candidate.id,
-        project_name: projectName,
-        repo_url: repoUrl,
+        project_name: projectName.trim(),
+        repo_url: repoUrl.trim(),
         repo_visibility: visibility,
         estimation_date: estimationDate,
       };
 
       await authAPI.addProject(payload);
 
-      alert("Project Created Successfully ✅");
+      showToast("Project created successfully ✅", "success");
 
       setShowModal(false);
       setProjectName("");
@@ -98,17 +118,24 @@ export default function GithubActivities() {
 
       fetchGithubActivities(candidate.id, date);
     } catch (err) {
-      alert(err.message || "Failed to create project");
+      showToast(err.message || "Failed to create project", "error");
     }
   };
 
   return (
     <div className="min-h-screen p-6 bg-white dark:bg-[#0f172a] text-black dark:text-white">
 
+      {/* 🔥 TOASTER */}
+      {toast.message && (
+        <div className={`fixed top-5 right-5 px-5 py-3 rounded-lg shadow-lg z-50 text-white
+          ${toast.type === "error" ? "bg-red-500" : "bg-green-600"}`}>
+          {toast.message}
+        </div>
+      )}
+
       {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
 
-        {/* LEFT */}
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.push("/dashboard")}
@@ -127,9 +154,7 @@ export default function GithubActivities() {
           </div>
         </div>
 
-        {/* RIGHT */}
         <div className="flex items-center gap-3">
-
           <button
             onClick={() => setShowModal(true)}
             className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
@@ -141,12 +166,11 @@ export default function GithubActivities() {
             type="date"
             value={date}
             onChange={handleDateChange}
-            className="p-2 rounded border bg-white dark:bg-[#1e293b] border-gray-300 dark:border-slate-700"
+            className="p-2 rounded border"
           />
         </div>
       </div>
 
-      {/* STATES */}
       {loading && <p>Loading...</p>}
       {error && <p className="text-red-500">{error}</p>}
 
@@ -249,47 +273,53 @@ export default function GithubActivities() {
 
       {/* 🔥 PREMIUM MODAL */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
 
-          <div className="w-[520px] bg-white dark:bg-[#1e293b] rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700">
+          {/* ⬆️ WIDTH INCREASED */}
+          <div className="w-[720px] bg-white dark:bg-[#1e293b] rounded-2xl shadow-2xl">
 
-            {/* HEADER */}
-            <div className="px-6 py-4 border-b flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Add New Project</h2>
+            <div className="px-6 py-4 border-b flex justify-between">
+              <h2 className="font-semibold">Add New Project</h2>
               <button onClick={() => setShowModal(false)}>✕</button>
             </div>
 
-            {/* BODY */}
             <div className="p-6 space-y-4">
 
+              {/* PROJECT NAME */}
               <div>
-                <label className="text-sm text-gray-500">Project Name</label>
+                <label className="text-sm">
+                  Project Name <span className="text-red-500">*</span>
+                </label>
                 <input
-                  type="text"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  className="w-full p-3 rounded-lg border"
+                  className="w-full p-3 border rounded-lg"
                 />
               </div>
 
+              {/* REPO URL */}
               <div>
-                <label className="text-sm text-gray-500">Repo URL</label>
+                <label className="text-sm">
+                  Repo URL <span className="text-red-500">*</span>
+                </label>
                 <input
-                  type="text"
                   value={repoUrl}
                   onChange={(e) => setRepoUrl(e.target.value)}
-                  className="w-full p-3 rounded-lg border"
+                  className="w-full p-3 border rounded-lg"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
 
+                {/* VISIBILITY */}
                 <div>
-                  <label className="text-sm text-gray-500">Visibility</label>
+                  <label className="text-sm">
+                    Visibility <span className="text-red-500">*</span>
+                  </label>
                   <select
                     value={visibility}
                     onChange={(e) => setVisibility(e.target.value)}
-                    className="w-full p-3 rounded-lg border"
+                    className="w-full p-3 border rounded-lg"
                   >
                     <option value="">Select</option>
                     <option value="public">Public</option>
@@ -297,14 +327,16 @@ export default function GithubActivities() {
                   </select>
                 </div>
 
+                {/* DATE */}
                 <div>
-                  <label className="text-sm text-gray-500">Estimation Date</label>
+                  <label className="text-sm">
+                    Estimation Date <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="date"
-                    min={new Date().toISOString().split("T")[0]}
                     value={estimationDate}
                     onChange={(e) => setEstimationDate(e.target.value)}
-                    className="w-full p-3 rounded-lg border"
+                    className="w-full p-3 border rounded-lg"
                   />
                 </div>
 
@@ -312,8 +344,7 @@ export default function GithubActivities() {
 
             </div>
 
-            {/* FOOTER */}
-            <div className="px-6 py-4 border-t flex justify-end gap-3">
+            <div className="px-6 py-4  flex justify-end gap-3">
               <button
                 onClick={() => setShowModal(false)}
                 className="px-4 py-2 bg-gray-300 rounded-lg"
