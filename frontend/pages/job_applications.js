@@ -263,21 +263,21 @@ export default function JobApplications() {
       {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
 
-        <div>
+        <div className="flex items-center gap-4">
           <button
             onClick={() => router.push("/dashboard")}
             className="mb-2 px-4 py-2 rounded-lg bg-blue-600 text-white btn-blue"
           >
             ← Back
           </button>
-
-          <h1 className="text-2xl font-semibold">
-            {selectedCandidate?.first_name || "Candidate"} – Job Applications
-          </h1>
-
-          <p className="text-sm text-[var(--text-secondary)]">
-            {week.start} → {week.end}
-          </p>
+          <div>
+            <h1 className="text-2xl font-semibold">
+              Job Applications of {candidateId}
+            </h1>
+            <p className="text-sm text-gray-400">
+              {week.start} → {week.end}
+            </p>
+          </div>
         </div>
 
         <div className="flex gap-3">
@@ -436,67 +436,47 @@ export default function JobApplications() {
                   {j.questionsAndAnswers && j.questionsAndAnswers.length > 0 && (
                     <div className="col-span-2 mt-4">
 
-                      {/* HEADER + HIDE BUTTON */}
                       <div className="flex justify-between items-center mb-2">
                         <p className="text-gray-400 text-sm">
                           Screening Questions & Answers
                         </p>
 
                         <button
-                            onClick={() => setShowQA(!showQA)}
-                            className="text-xs px-3 py-1 rounded-md 
-                                      bg-gray-200 text-gray-700 hover:bg-gray-300
-                                      dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600
-                                      transition"
-                          >
-                            {showQA ? "Hide" : "Show"}
-                          </button>
+                          onClick={() => setShowQA(!showQA)}
+                          className="text-xs px-3 py-1 rounded-md 
+                                    bg-gray-200 text-gray-700 hover:bg-gray-300
+                                    dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600
+                                    transition"
+                        >
+                          {showQA ? "Hide" : "Show"}
+                        </button>
                       </div>
-
                       {showQA && (
-                        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 max-h-64 overflow-y-auto">
+                          <div className="space-y-3">
+                            {j.questionsAndAnswers.map((qa, idx) => (
+                              <div
+                                key={idx}
+                                className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-gray-700"
+                              >
 
-                          <table className="w-full text-sm table-fixed text-center">
+                                <p className="text-xs text-gray-400 mb-1">
+                                  Question {idx + 1}
+                                </p>
+                                <p className="font-medium mb-2">
+                                  {qa.question}
+                                </p>
 
-                            {/* HEADER */}
-                            <thead className="bg-gray-100 dark:bg-[var(--bg-secondary)] text-gray-700 dark:text-gray-300">
-                              <tr>
-                                <th className="px-4 py-3 w-12">#</th>
-                                <th className="px-4 py-3 w-1/2">Question</th>
-                                <th className="px-4 py-3 w-1/2">Answer</th>
-                              </tr>
-                            </thead>
+                                <p className="text-xs text-gray-400 mb-1">
+                                  Answer
+                                </p>
+                                <p className="text-sm text-gray-300">
+                                  {qa.answer}
+                                </p>
 
-                            {/* BODY */}
-                            <tbody>
-                              {j.questionsAndAnswers.map((qa, idx) => (
-                                <tr
-                                  key={idx}
-                                  className="border-t border-gray-200 dark:border-gray-700 
-                                            hover:bg-gray-50 dark:hover:bg-[var(--bg-secondary)] transition"
-                                >
-                                  {/* INDEX */}
-                                  <td className="px-4 py-4 text-gray-500 dark:text-gray-400">
-                                    {idx + 1}
-                                  </td>
-
-                                  {/* QUESTION */}
-                                  <td className="px-4 py-4 font-medium text-gray-800 dark:text-white break-words whitespace-normal">
-                                    {qa.question}
-                                  </td>
-
-                                  {/* ANSWER */}
-                                  <td className="px-4 py-4 text-gray-600 dark:text-gray-300 break-words whitespace-normal">
-                                    {qa.answer}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-
-                          </table>
-                        </div>
-                      )}
-
+                              </div>
+                            ))}
+                          </div>
+                        )}
                     </div>
                   )}
 
