@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import { authAPI } from "../services/authAPI";
 
@@ -17,6 +17,8 @@ export default function GithubActivities() {
   const [repoUrl, setRepoUrl] = useState("");
   const [visibility, setVisibility] = useState("");
   const [estimationDate, setEstimationDate] = useState("");
+  const [selectedProject, setSelectedProject] = useState(null);
+
 
   // 🔥 TOASTER STATE
   const [toast, setToast] = useState({ message: "", type: "" });
@@ -36,9 +38,30 @@ export default function GithubActivities() {
 
   // ✅ Default date
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
-    setDate(today);
+    const savedDate = localStorage.getItem("selectedDate");
+
+    if (savedDate) {
+      setDate(savedDate);
+    } else {
+      const today = new Date().toISOString().split("T")[0];
+      setDate(today);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!data?.projects?.length) return;
+
+    // ⭐ keep same project after refresh
+    const updatedProject = data.projects.find(
+      (p) => p.project_id === selectedProject?.project_id
+    );
+
+    if (updatedProject) {
+      setSelectedProject(updatedProject);
+    } else {
+      setSelectedProject(data.projects[0]);
+    }
+  }, [data]);
 
   const fetchGithubActivities = async (candidateId, selectedDate) => {
     if (!candidateId || !selectedDate) return;
@@ -59,20 +82,29 @@ export default function GithubActivities() {
       setLoading(false);
     }
   };
-
+  const lastFetchedDateRef = useRef("");
   useEffect(() => {
-    if (candidate?.id && date) {
-      fetchGithubActivities(candidate.id, date);
-    }
+    if (!candidate?.id || !date) return;
+
+    if (lastFetchedDateRef.current === date) return;
+
+    lastFetchedDateRef.current = date;
+
+    fetchGithubActivities(candidate.id, date);
   }, [candidate, date]);
 
-  const handleDateChange = (e) => setDate(e.target.value);
+  const handleDateChange = (e) => {
+    const newDate = e.target.value;
+    setDate(newDate);
+    localStorage.setItem("selectedDate", newDate);
+  };
 
   const allCommits =
     data?.projects?.flatMap((p) => p.commits || []) || [];
 
   const totalCommits = allCommits.length;
-  const currentProject = data?.projects?.[0];
+  const currentProject = selectedProject;
+  console.log(currentProject)
 
   // 🚀 VALIDATION
   const validateForm = () => {
@@ -86,6 +118,20 @@ export default function GithubActivities() {
       return "Estimation Date is required";
 
     return null;
+  };
+
+  const formatDateTime = (iso) => {
+    const d = new Date(iso);
+
+    const date = d.toISOString().split("T")[0]; // 2026-01-24
+
+    const time = d.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    return `${date} ${time}`;
   };
 
   // 🚀 ADD PROJECT
@@ -171,84 +217,181 @@ export default function GithubActivities() {
         </div>
       </div>
 
-      {loading && <p>Loading...</p>}
-      {error && <p className="text-red-500">{error}</p>}
 
-      {!loading && !data && (
-        <p className="text-gray-500 dark:text-gray-400">
-          Loading GitHub activity...
-        </p>
+      {!loading && data && (!data.projects || data.projects.length === 0) && (
+        <div className="flex items-center justify-center h-[70vh]">
+
+          <div className="text-center">
+
+            <div className="
+              w-20 h-20 mx-auto mb-5
+              flex items-center justify-center
+              rounded-full
+              bg-[var(--bg-secondary)]
+              text-[var(--primary)]
+            ">
+              📂
+            </div>
+
+            <h2 className="text-lg font-semibold">
+              No GitHub Projects Found
+            </h2>
+
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              No GitHub projects are available for this candidate yet.
+            </p>
+
+          </div>
+
+        </div>
       )}
 
       {/* DASHBOARD */}
-      {data && data.projects && (
+      {data && data.projects && data.projects.length > 0 && (
         <div className="space-y-6">
 
           {/* CURRENT PROJECT */}
+          {/* 🚀 CURRENT PROJECT HEADER CARD */}
           <div className="p-6 rounded-xl border bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700">
-            <div className="flex justify-between mb-4">
-              <h2 className="font-semibold">🚀 Current Project</h2>
-              <span className="text-green-500 text-sm">Active</span>
+
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-blue-600">✔</span>
+                <h2 className="font-semibold text-lg">Current Project</h2>
+              </div>
             </div>
 
             {currentProject && (
-              <>
-                <h3 className="text-xl font-bold">
-                  {currentProject.project_name}
-                </h3>
+              <div className="grid grid-cols-2 gap-6">
 
-                <div className="flex justify-between text-sm text-gray-500 mt-2">
-                  <span>Est: {currentProject.estimation_date}</span>
-                  <span>Status: {currentProject.status}</span>
+                {/* LEFT SIDE */}
+                <div>
+                  <h3 className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                    {currentProject.project_name}
+                  </h3>
+
+                  <p className="text-sm text-gray-500 mt-1">
+                    Started: {currentProject.start_date?.split("T")[0]}
+                  </p>
                 </div>
-              </>
+
+                {/* RIGHT SIDE */}
+                <div className="text-sm">
+
+                  <p className="font-semibold mb-2">
+                    This Week: {totalCommits} Commits
+                  </p>
+
+                  <p className="text-gray-500">
+                    Status:{" "}
+                    <span className="text-green-500 font-medium">
+                      ● {currentProject.status || "Actively Developing"}
+                    </span>
+                  </p>
+
+                  <p className="text-gray-500 mt-2">
+                    Estimation Date: {currentProject.estimation_date || "-"}
+                  </p>
+
+                </div>
+
+              </div>
             )}
+
           </div>
 
           {/* ACTIVITY + SUMMARY */}
           <div className="grid grid-cols-3 gap-6">
 
-            <div className="col-span-2 p-5 rounded-xl border bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700">
+            <div
+              className={`col-span-2 h-[30vh] p-5 rounded-xl border bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700 flex flex-col overflow-y-auto`}>
               <h3 className="mb-4 font-semibold">Recent Activity</h3>
 
-              {allCommits.slice(0, 5).map((c, i) => (
-                <div
-                  key={i}
-                  className="flex justify-between p-3 rounded mb-2 bg-gray-100 dark:bg-[#0f172a]"
-                >
-                  <div>
-                    <p>{c.message}</p>
-                    <p className="text-xs text-gray-500">{c.commit_date}</p>
-                  </div>
-
-                  <a
-                    href={c.commit_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-500 text-xs"
-                  >
-                    View →
-                  </a>
+              {currentProject?.commits?.length === 0 ? (
+                <div className="flex items-center justify-center h-32 text-gray-500">
+                  No Recent Activity Found
                 </div>
-              ))}
+              ) : (
+                currentProject?.commits?.map((c, i) => (
+                  <div
+                    key={i}
+                    className="flex justify-between p-4 mb-3 rounded-xl bg-gray-100 dark:bg-[#0f172a] card-hover"
+                  >
+                    <div>
+                      <p>{c.message}</p>
+                      <p className="text-xs text-gray-500">
+                        {formatDateTime(c.commit_date)}
+                      </p>
+                    </div>
+
+                    <a
+                      href={c.commit_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-500 text-xs"
+                    >
+                      View →
+                    </a>
+                  </div>
+                ))
+              )}
             </div>
 
-            <div className="p-5 rounded-xl border bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700">
-              <h3 className="mb-4 font-semibold">This Week</h3>
-              <p>📁 Projects: {data.total_projects}</p>
-              <p>✅ Commits: {totalCommits}</p>
+           <div className="p-5 h-[30vh] rounded-xl border bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700">
+
+              <h3 className="mb-4 font-semibold text-lg">Project Summary</h3>
+
+              {/* GRID STATS */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+
+                {/* PROJECTS */}
+                <div className="p-4 rounded-lg bg-blue-50 dark:bg-[#0f172a] flex items-center justify-between card-hover">
+                  <div>
+                    <p className="text-xs text-gray-500">Projects</p>
+                    <p className="text-xl font-bold">{data.total_projects}</p>
+                  </div>
+                  <span className="text-2xl">📁</span>
+                </div>
+
+                {/* COMMITS */}
+                <div className="p-4 rounded-lg bg-green-50 dark:bg-[#0f172a] flex items-center justify-between card-hover">
+                  <div>
+                    <p className="text-xs text-gray-500">Commits</p>
+                    <p className="text-xl font-bold">{totalCommits}</p>
+                  </div>
+                  <span className="text-2xl">✅</span>
+                </div>
+
+              </div>
+
+              {/* EXTRA INSIGHTS */}
+              <div className="text-sm text-gray-500 space-y-1">
+                <p>🔥 Active Project: {currentProject?.project_name}</p>
+              </div>
+
             </div>
           </div>
 
           {/* PROJECT GRID */}
           <div>
-            <h3 className="mb-4 font-semibold">Projects</h3>
+            <h3 className="mb-4 font-semibold">Github Projects</h3>
 
             <div className="grid grid-cols-3 gap-4">
               {data.projects.map((p, i) => (
                 <div
                   key={i}
-                  className="p-4 rounded-xl border bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700"
+                  onClick={() => {
+                    setSelectedProject(p);
+
+                    const today = new Date().toISOString().split("T")[0];
+
+                    setDate(today);
+                    localStorage.setItem("selectedDate", today);
+                  }}
+                  className={`p-4 rounded-xl border cursor-pointer 
+                    bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700
+                    ${currentProject?.project_id === p.project_id ? "ring-2 ring-blue-500" : ""}
+                  `}
                 >
                   <h4 className="font-semibold">{p.project_name}</h4>
                   <p className="text-sm text-gray-500">
