@@ -97,7 +97,7 @@ export default function AssistantDashboard() {
             </p>
           </div>
         )}
-
+        <MenuItem icon={<Briefcase size={18} />} label="Candidate Profile" onClick={() => navigate("/candiate_details")} />
         <MenuItem icon={<Briefcase size={18} />} label="Job Applications" onClick={() => navigate("/job_applications")} />
         <MenuItem icon={<Github size={18} />} label="GitHub" onClick={() => navigate("/github_activities")} />
         <MenuItem icon={<Linkedin size={18} />} label="LinkedIn" onClick={() => navigate("/linkedin_activities")} />

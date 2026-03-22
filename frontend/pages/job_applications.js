@@ -18,9 +18,18 @@ export default function JobApplications() {
   const [date, setDate] = useState(today);
   const [expandedId, setExpandedId] = useState(null);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [atsScore, setAtsScore] = useState(0);
+  const [aiScore, setAiScore] = useState(0);
+  const [showAlert, setShowAlert] = useState(true);
+  const [resumeFile, setResumeFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [modalHeight, setModalHeight] = useState("auto");
 
   const [showModal, setShowModal] = useState(false);
   const [editJob, setEditJob] = useState(null);
+  const [qaList, setQaList] = useState([
+    { question: "", answer: "" }
+  ]);
 
   const [form, setForm] = useState({
     company: "",
@@ -32,6 +41,31 @@ export default function JobApplications() {
     application_date: today,
     ats_score: ""
   });
+
+  useEffect(() => {
+    const calculateHeight = () => {
+      const navbar = document.getElementById("app-navbar");
+      const navbarHeight = navbar?.offsetHeight || 0;
+
+      const screenHeight = window.innerHeight;
+
+      const finalHeight =
+        screenHeight - navbarHeight - screenHeight * 0.05;
+
+      setModalHeight(finalHeight);
+    };
+
+    calculateHeight();
+    window.addEventListener("resize", calculateHeight);
+
+    return () => window.removeEventListener("resize", calculateHeight);
+  }, []);
+
+  const getColor = (score) => {
+    if (score < 70) return "text-red-400 bg-red-400/20";
+    if (score < 85) return "text-yellow-400 bg-yellow-400/20";
+    return "text-green-400 bg-green-400/20";
+  };
   /* ================= FETCH ================= */
   const fetchData = async () => {
     if (!candidateId) return;
@@ -68,6 +102,21 @@ export default function JobApplications() {
     return { start: format(start), end: format(end) };
   };
 
+  const addQA = () => {
+    setQaList([...qaList, { question: "", answer: "" }]);
+  };
+
+  const removeQA = (index) => {
+    const updated = qaList.filter((_, i) => i !== index);
+    setQaList(updated);
+  };
+
+  const updateQA = (index, field, value) => {
+    const updated = [...qaList];
+    updated[index][field] = value;
+    setQaList(updated);
+  };
+
   const week = getWeekRange(date);
 
   const showToast = (msg, type = "error") => {
@@ -79,54 +128,68 @@ export default function JobApplications() {
   };
 
   /* ================= SUBMIT ================= */
+  const mapExperienceToNumber = (exp) => {
+    if (exp === "0-1") return 1;
+    if (exp === "1-2") return 2;
+    if (exp === "2-3") return 3;
+    if (exp === "3-4") return 4;
+    if (exp === "4-5") return 5;
+    return Number(exp) || 1;
+  };
+
   const handleSubmit = async () => {
-    const experienceValue =
-      form.experience === "Other"
-        ? form.experience_other
-        : form.experience;
-
-    const payload = {
-      jaa_candidate_id: String(candidateId),
-      company_name: form.company,
-      job_title: form.role,
-      application_link: form.job_link,
-      applied_via: form.applied_via,
-      employment_type: form.employment_type || "Full-time",
-      experience: experienceValue,
-      ats_score: Number(form.ats_score)
-    };
-
     try {
-      if (editJob) {
-        // ✅ UPDATE
-        await authAPI.createJobApplication({
-          ...payload,
-          job_id: editJob.job_id   // IMPORTANT
+      setUploading(true)
+
+      const fileExt = resumeFile?.name.endsWith(".pdf")
+        ? ".pdf"
+        : ".docx";
+
+      const payload = {
+        jaa_candidate_id: String(candidateId),
+        company_name: form.company,
+        job_title: form.role,
+        application_link: form.job_link,
+        applied_via: form.applied_via,
+        employment_type: form.employment_type || "Full-time",
+        experience: form.experience,
+        ats_score: Number(form.ats_score),
+        ai_detection_score: Number(form.ai_detection_score),
+        resume_file_extension: fileExt,
+        questionsAndAnswers: qaList
+      };
+
+      // 🔥 STEP 1: CREATE JOB
+      const res = await authAPI.createJobApplication(payload);
+
+      const parsed =
+        typeof res.body === "string" ? JSON.parse(res.body) : res;
+
+      const uploadUrl = parsed.resume_upload_url;
+
+      // 🔥 STEP 2: UPLOAD RESUME
+      if (uploadUrl && resumeFile) {
+        await fetch(uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": fileExt === ".pdf"
+              ? "application/pdf"
+              : "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          },
+          body: resumeFile
         });
-
-        showToast("Job updated successfully ✅", "success");
-
-      } else {
-        // ✅ CREATE
-        await authAPI.createJobApplication(payload);
-
-        showToast("Job Application added successfully ✅", "success");
       }
 
+      showToast("Job Application added successfully ✅", "success");
+
     } catch (e) {
-      console.error("API Error:", e);
-
-      const errorMsg =
-        e?.response?.data?.message ||
-        e?.response?.data?.error ||
-        e?.message ||
-        "Something went wrong ❌";
-
-      showToast(errorMsg);
+      console.error(e);
+      showToast("Something went wrong ❌");
+    } finally {
+      setUploading(false);
+      setShowModal(false);
+      fetchData();
     }
-
-    setShowModal(false);
-    fetchData();
   };
 
   /* ================= HANDLERS ================= */
@@ -144,8 +207,11 @@ export default function JobApplications() {
       applied_via: "",
       employment_type: "Full-time",
       experience: "",
-      ats_score: ""
+      ats_score: "",
+      ai_detection_score: "",
     });
+    // 🔥 RESET Q&A HERE
+    setQaList([{ question: "", answer: "" }]);
 
     setShowModal(true);
   };
@@ -160,7 +226,9 @@ export default function JobApplications() {
       applied_via: job.applied_via || "",
       employment_type: job.employment_type || "Full-time",
       experience: job.experience || "",
-      ats_score: job.ats_score || ""
+      ats_score: job.ats_score || "",
+      ai_detection_score: job.ai_detection_score || "",
+      qaList: job.que
     });
 
     setShowModal(true);
@@ -328,14 +396,17 @@ export default function JobApplications() {
       {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-[var(--card)] w-full max-w-2xl rounded-2xl p-6 shadow-xl animate-fade-in relative">
-            <div className="p-6 border-b border-gray-700 flex justify-between">
+          <div
+            style={{ height: modalHeight, padding: "10px" }}
+            className="bg-[var(--card)] w-full max-w-2xl rounded-2xl shadow-xl animate-fade-in relative flex flex-col"
+          >
+            <div className="p-6 border-b border-gray-700 flex justify-between sticky top-0 bg-[var(--card)] z-10">
               <h2 className="text-xl">{editJob ? "Edit Job Application" : "Add Job Application"}</h2>
               <button onClick={() => setShowModal(false)}>✕</button>
             </div>
 
             {/* FORM */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 overflow-y-auto">
 
               {/* COMPANY */}
               <div>
@@ -421,6 +492,26 @@ export default function JobApplications() {
                 )}
               </div>
 
+              {/* 🔥 RESUME UPLOAD */}
+              <div className="col-span-2">
+                <label className="text-sm">
+                  Upload Resume (PDF/DOC) <span className="text-red-500">*</span>
+                </label>
+
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) => setResumeFile(e.target.files[0])}
+                  className="input"
+                />
+
+                {uploading && (
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">
+                    Uploading & analyzing...
+                  </p>
+                )}
+              </div>
+
               {/* ATS */}
               <div>
                 <label className="text-sm">
@@ -431,6 +522,20 @@ export default function JobApplications() {
                   value={form.ats_score}
                   onChange={(e) =>
                     setForm({ ...form, ats_score: e.target.value })
+                  }
+                  className="input"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm">
+                  AI Detection Score (%) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={form.ai_detection_score}
+                  onChange={(e) =>
+                    setForm({ ...form, ai_detection_score: e.target.value })
                   }
                   className="input"
                 />
@@ -448,10 +553,68 @@ export default function JobApplications() {
                 />
               </div>
 
+              {/* 🔥 QUESTIONS & ANSWERS */}
+              <div className="col-span-2 mt-2">
+                <label className="text-sm">
+                  Questions & Answers
+                </label>
+
+                <div className="space-y-3 mt-2">
+
+                  {qaList.map((qa, index) => (
+                    <div
+                      key={index}
+                      className="p-3 rounded-xl border border-gray-700 bg-[var(--bg-secondary)]"
+                    >
+
+                      {/* QUESTION */}
+                      <input
+                        placeholder={`Question ${index + 1}`}
+                        value={qa.question}
+                        onChange={(e) =>
+                          updateQA(index, "question", e.target.value)
+                        }
+                        className="input mb-2"
+                      />
+
+                      {/* ANSWER */}
+                      <textarea
+                        placeholder="Write answer..."
+                        value={qa.answer}
+                        onChange={(e) =>
+                          updateQA(index, "answer", e.target.value)
+                        }
+                        className="input"
+                      />
+
+                      {/* REMOVE BUTTON */}
+                      {qaList.length > 1 && (
+                        <button
+                          onClick={() => removeQA(index)}
+                          className="text-red-400 text-xs mt-2 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* ADD BUTTON */}
+                  <button
+                    type="button"
+                    onClick={addQA}
+                    className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm"
+                  >
+                    + Add Question
+                  </button>
+
+                </div>
+              </div>
+
             </div>
 
             {/* ACTIONS */}
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="flex justify-end gap-3 mt-6 flex justify-end gap-3 sticky bottom-0 bg-[var(--card)]">
 
               <button
                 onClick={() => setShowModal(false)}
@@ -462,6 +625,9 @@ export default function JobApplications() {
 
               <button
                 onClick={() => {
+                  const ats = Number(form.ats_score);
+                  const ai = Number(form.ai_detection_score);
+
                   if (
                     !form.company ||
                     !form.role ||
@@ -471,12 +637,26 @@ export default function JobApplications() {
                     !(form.experience === "Other"
                       ? form.experience_other
                       : form.experience) ||
-                    !form.ats_score
+                    !form.ats_score ||
+                    !form.ai_detection_score
                   ) {
                     showToast("Please fill all mandatory fields ⚠️");
                     return;
                   }
 
+                  // 🔴 ATS VALIDATION
+                  if (ats < 85) {
+                    showToast("ATS score must be ≥ 85%. Please update resume ⚠️");
+                    return;
+                  }
+
+                  // 🔴 AI VALIDATION
+                  if (ai > 25) {
+                    showToast("AI detection too high (>25%). Make resume more human ⚠️");
+                    return;
+                  }
+
+                  // ✅ SUCCESS
                   handleSubmit();
                 }}
                 className="px-4 py-2 rounded bg-blue-600 text-white"
