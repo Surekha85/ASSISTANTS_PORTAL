@@ -4,12 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import {
   Github,
   Linkedin,
-  Folder,
-  Briefcase,
-  ChevronDown,
-  ChevronUp,
-  Check,
-} from "lucide-react";
+  User,
+  FileText,
+  LayoutGrid } from "lucide-react";
 import { authAPI } from "../services/authAPI";
 import { useRouter } from "next/router";
 import { MapPin } from "lucide-react";
@@ -19,9 +16,9 @@ export default function AssistantDashboard() {
 
   const [candidates, setCandidates] = useState([]);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
-  const [expandedId, setExpandedId] = useState(null);
   const [openDropdown, setOpenDropdown] = useState(false);
   const [height, setHeight] = useState("100vh");
+  const [loading, setLoading] = useState(true);
 
 
   const dropdownRef = useRef();
@@ -42,33 +39,35 @@ export default function AssistantDashboard() {
   }, []);
 
   // 🔥 Load candidates
-  useEffect(() => {
+   useEffect(() => {
     const load = async () => {
-      const res = await authAPI.getAssignedCandidates();
-      const ids = res?.assigned_candidates || [];
+      try {
+        const res = await authAPI.getAssignedCandidates();
+        const ids = res?.assigned_candidates || [];
 
-      const all = await Promise.all(
-        ids.map(async (id) => {
-          const d = await authAPI.getCandidateDetails(id);
-          return { ...d, id };
-        })
-      );
+        const all = await Promise.all(
+          ids.map(async (id) => {
+            const d = await authAPI.getCandidateDetails(id);
+            return { ...d, id };
+          })
+        );
 
-      setCandidates(all);
-      const stored = localStorage.getItem("selectedCandidate");
-      if (stored) {
-        const parsed = JSON.parse(stored);
+        setCandidates(all);
 
-        // match with current candidates list
-        const match = all.find((c) => c.id === parsed.id);
+        const stored = localStorage.getItem("selectedCandidate");
 
-        if (match) {
-          setSelectedCandidate(match);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const match = all.find((c) => c.id === parsed.id);
+          setSelectedCandidate(match || all[0]);
         } else {
           setSelectedCandidate(all[0]);
         }
-      } else {
-        setSelectedCandidate(all[0]);
+
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false); // 🔥 IMPORTANT
       }
     };
 
@@ -79,11 +78,6 @@ export default function AssistantDashboard() {
     setSelectedCandidate(c);
     localStorage.setItem("selectedCandidate", JSON.stringify(c)); // 🔥 ADD THIS
     setOpenDropdown(false);
-  };
-
-  const toggleExpand = (e, id) => {
-    e.stopPropagation();
-    setExpandedId(expandedId === id ? null : id);
   };
 
   const navigate = (path) => {
@@ -102,16 +96,31 @@ export default function AssistantDashboard() {
     ? [selectedCandidate, ...candidates.filter((c) => c.id !== selectedCandidate.id)]
     : candidates;
 
+    // 🔥 LOADER UI
+  if (loading) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-[var(--bg)] text-[var(--text)]">
+
+        <div className="w-10 h-10 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mb-3"></div>
+
+        <p className="text-sm text-[var(--text-secondary)]">
+          Loading candidates...
+        </p>
+
+      </div>
+    );
+  }
+
   return (
     <div
       style={{ height }}
       className="flex overflow-hidden bg-[var(--bg)] text-[var(--text)]"
     >
 
-      {/* SIDEBAR */}
-      <aside className="w-72 p-5 bg-[var(--card)] border-r border-[var(--border)]">
+      {/* 🔥 SIDEBAR ONLY AFTER SELECT */}
+      {selectedCandidate && (
+        <aside className="w-72 p-5 bg-[var(--card)] border-r border-[var(--border)]">
 
-        {selectedCandidate && (
           <div className="bg-[var(--bg-secondary)] p-4 rounded-xl mb-6">
             <p className="font-semibold">
               {selectedCandidate.first_name} {selectedCandidate.last_name}
@@ -120,73 +129,89 @@ export default function AssistantDashboard() {
               {selectedCandidate.email}
             </p>
           </div>
-        )}
-        <MenuItem icon={<Briefcase size={18} />} label="Candidate Profile" onClick={() => navigate("/candiate_details")} />
-        <MenuItem icon={<Briefcase size={18} />} label="Job Applications" onClick={() => navigate("/job_applications")} />
-        <MenuItem icon={<Github size={18} />} label="GitHub" onClick={() => navigate("/github_activities")} />
-        <MenuItem icon={<Linkedin size={18} />} label="LinkedIn" onClick={() => navigate("/linkedin_activities")} />
-        <MenuItem icon={<Folder size={18} />} label="Portfolio" onClick={() => navigate("/portfolio")} />
-      </aside>
+
+          <MenuItem icon={<User size={18} />} label="Candidate Profile" onClick={() => navigate("/candiate_details")} />
+          <MenuItem icon={<FileText size={18} />} label="Job Applications" onClick={() => navigate("/job_applications")} />
+          <MenuItem icon={<Github size={18} />} label="GitHub" onClick={() => navigate("/github_activities")} />
+          <MenuItem icon={<Linkedin size={18} />} label="LinkedIn" onClick={() => navigate("/linkedin_activities")} />
+          <MenuItem icon={<LayoutGrid size={18} />} label="Portfolio" onClick={() => navigate("/portfolio")} />
+
+        </aside>
+      )}
 
       {/* MAIN */}
       <main className="flex-1 flex flex-col p-6 overflow-hidden">
 
         {/* HEADER */}
-        <div className="flex justify-between items-center mb-4 shrink-0">
-          <h1 className="text-2xl font-semibold">All Candidates</h1>
+        {candidates.length > 0 && (
+          <div className="flex justify-between items-center mb-4 shrink-0">
+            <h1 className="text-2xl font-semibold">All Candidates</h1>
 
-          {/* 🔥 MODERN DROPDOWN */}
-          <div className="relative" ref={dropdownRef}>
-            <div
-              onClick={() => setOpenDropdown(!openDropdown)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--card)] border border-[var(--border)] cursor-pointer"
-            >
-              {selectedCandidate?.first_name}
-              <ChevronDown size={16} />
-            </div>
-
-            {openDropdown && (
-              <div className="absolute right-0 mt-2 w-56 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl z-50">
-
-                {candidates.map((c) => {
-                  const active = selectedCandidate?.id === c.id;
-
-                  return (
-                    <div
-                      key={c.id}
-                      onClick={() => handleSelect(c)}
-                      className={`flex justify-between items-center px-4 py-3 cursor-pointer text-sm
-                      ${active ? "bg-[#144ca7] text-white" : "hover:bg-[var(--bg-secondary)]"}
-                      `}
-                    >
-                      <span>{c.first_name}</span>
-                      {active && <Check size={14} />}
-                    </div>
-                  );
-                })}
+            <div className="relative" ref={dropdownRef}>
+              <div
+                onClick={() => setOpenDropdown(!openDropdown)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--card)] border border-[var(--border)] cursor-pointer"
+              >
+                {selectedCandidate?.first_name}
               </div>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto pr-2">
 
+              {openDropdown && (
+                <div className="absolute right-0 mt-2 w-56 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl z-50">
+
+                  {candidates.map((c) => {
+                    const active = selectedCandidate?.id === c.id;
+
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={() => handleSelect(c)}
+                        className={`flex justify-between items-center px-4 py-3 cursor-pointer text-sm
+                        ${active ? "bg-[#144ca7] text-white" : "hover:bg-[var(--bg-secondary)]"}
+                        `}
+                      >
+                        <span>{c.first_name}</span>
+                        {active && <Check size={14} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* LIST */}
+        <div className="flex-1 overflow-y-auto pr-2">
           {candidates.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
+              {/* ICON */}
+              <div className="
+                w-20 h-20 mb-6 
+                flex items-center justify-center 
+                rounded-full 
+                bg-[var(--bg-secondary)] 
+                text-[var(--primary)] text-3xl
+              ">
+                👤
+              </div>
 
-              <div className="text-4xl mb-4">📭</div>
+              {/* TITLE */}
+              <h2 className="text-xl font-semibold">
+                No Candidates Found
+              </h2>
 
-              <p className="text-sm text-[var(--text-secondary)] mt-1">
-                No candidates are assigned to this assistant
+              {/* DESCRIPTION */}
+              <p className="text-sm text-[var(--text-secondary)] mt-2 max-w-sm">
+                No candidates are currently assigned to this assistant. 
+                Once candidates are added, they will appear here.
               </p>
-
             </div>
+
           ) : (
             <div className="space-y-4">
 
               {sorted.map((c) => {
                 const isActive = selectedCandidate?.id === c.id;
-                const isExpanded = expandedId === c.id;
 
                 return (
                   <div
@@ -199,14 +224,10 @@ export default function AssistantDashboard() {
                         : "bg-[var(--card)] hover:bg-[var(--bg-secondary)]"
                     }`}
                   >
-                    {/* TOP */}
                     <div className="flex justify-between items-center">
 
                       <div className="flex gap-4">
 
-                        {/* <div className="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center">
-                          {c.first_name?.[0]}
-                        </div> */}
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg shadow">
                           {c.first_name?.[0]}
                         </div>
@@ -217,15 +238,14 @@ export default function AssistantDashboard() {
                           </p>
                           <p className="text-sm opacity-80">{c.email}</p>
                           <p className="text-xs opacity-70">
-                            {c?.address?.city} •{" "}
-                            {c?.address?.state}
+                            {c?.address?.city} • {c?.address?.state}
                           </p>
-                          <p  className="text-xs opacity-70">
-                            📞
-                          <span>{c.phone}</span>
+                          <p className="text-xs opacity-70">
+                            📞 <span>{c.phone}</span>
                           </p>
                         </div>
                       </div>
+
                       {c?.address?.country && (
                         <div className="flex items-center gap-2 text-sm opacity-80">
                           <MapPin size={16} />
@@ -244,6 +264,7 @@ export default function AssistantDashboard() {
     </div>
   );
 }
+
 
 /* MENU */
 function MenuItem({ icon, label, onClick }) {
