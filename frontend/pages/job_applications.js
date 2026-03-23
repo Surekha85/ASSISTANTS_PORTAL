@@ -207,7 +207,6 @@ export default function JobApplications() {
         payload.job_id = editJob.job_id
 
         const isResumeUpdated = !!resumeFile;
-
         if (isResumeUpdated) {
           payload.update_resume = true;
           payload.resume_file_extension = resumeFile.name.endsWith(".pdf")
