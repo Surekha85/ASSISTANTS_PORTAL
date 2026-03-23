@@ -150,50 +150,124 @@ export default function JobApplications() {
     }
   };
 
+  const getUpdatedFields = () => {
+    const updated = {};
+
+    if (form.company !== editJob.company_name)
+      updated.company_name = form.company;
+
+    if (form.role !== editJob.job_title)
+      updated.job_title = form.role;
+
+    if (form.job_link !== editJob.application_link)
+      updated.application_link = form.job_link;
+
+    if (form.applied_via !== editJob.applied_via)
+      updated.applied_via = form.applied_via;
+
+    if (form.employment_type !== editJob.employment_type)
+      updated.employment_type = form.employment_type;
+
+    if (form.experience !== editJob.experience)
+      updated.experience = form.experience;
+
+    if (Number(form.ats_score) !== editJob.ats_score)
+      updated.ats_score = Number(form.ats_score);
+
+    if (Number(form.ai_detection_score) !== editJob.ai_detection_score)
+      updated.ai_detection_score = Number(form.ai_detection_score);
+
+    const normalizeQA = (list) =>
+      (list || []).map(q => ({
+        question: q.question.trim(),
+        answer: q.answer.trim()
+      }));
+
+    const isQAChanged =
+      JSON.stringify(normalizeQA(qaList)) !==
+      JSON.stringify(normalizeQA(editJob.questionsAndAnswers));
+
+    if (isQAChanged) {
+      updated.questionsAndAnswers = qaList;
+    }
+
+    return updated;
+  };
+
   const handleSubmit = async () => {
     try {
-      setUploading(true)
+      setUploading(true);
 
-      const fileExt = resumeFile?.name.endsWith(".pdf")
-        ? ".pdf"
-        : ".docx";
+      let res;
+      let payload = {};
 
-      const payload = {
-        jaa_candidate_id: String(candidateId),
-        company_name: form.company,
-        job_title: form.role,
-        application_link: form.job_link,
-        applied_via: form.applied_via,
-        employment_type: form.employment_type || "Full-time",
-        experience: form.experience,
-        ats_score: Number(form.ats_score),
-        ai_detection_score: Number(form.ai_detection_score),
-        resume_file_extension: fileExt,
-        questionsAndAnswers: qaList
-      };
+      if (editJob) {
+        // ONLY UPDATED FIELDS
+        payload = getUpdatedFields();
+        payload.job_id = editJob.job_id
 
-      // 🔥 STEP 1: CREATE JOB
-      const res = await authAPI.createJobApplication(payload);
+        const isResumeUpdated = !!resumeFile;
+
+        if (isResumeUpdated) {
+          payload.update_resume = true;
+          payload.resume_file_extension = resumeFile.name.endsWith(".pdf")
+            ? ".pdf"
+            : ".docx";
+        }
+
+        // Nothing changed
+        if (Object.keys(payload).length === 0) {
+          showToast("No changes detected ⚠️");
+          return;
+        }
+
+        // UPDATE API
+        res = await authAPI.createandUpdateJobApplication(payload);
+
+      } else {
+        // CREATE FLOW (same as before)
+        payload = {
+          jaa_candidate_id: String(candidateId),
+          company_name: form.company,
+          job_title: form.role,
+          application_link: form.job_link,
+          applied_via: form.applied_via,
+          employment_type: form.employment_type || "Full-time",
+          experience: form.experience,
+          ats_score: Number(form.ats_score),
+          ai_detection_score: Number(form.ai_detection_score),
+          resume_file_extension: resumeFile?.name.endsWith(".pdf")
+            ? ".pdf"
+            : ".docx",
+          questionsAndAnswers: qaList
+        };
+
+        res = await authAPI.createandUpdateJobApplication(payload);
+      }
 
       const parsed =
         typeof res.body === "string" ? JSON.parse(res.body) : res;
 
       const uploadUrl = parsed.resume_upload_url;
 
-      // 🔥 STEP 2: UPLOAD RESUME
+      // ONLY upload if resume changed
       if (uploadUrl && resumeFile) {
-        await fetch(uploadUrl, {
+        const update_resume = await fetch(uploadUrl, {
           method: "PUT",
-          headers: {
-            "Content-Type": fileExt === ".pdf"
-              ? "application/pdf"
-              : "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          },
           body: resumeFile
         });
+
+        if (!update_resume.ok) {
+            throw new Error("Resume upload failed");
+          }
       }
 
-      showToast("Job Application added successfully ✅", "success");
+      showToast(
+        editJob
+          ? "Updated successfully ✅"
+          : "Created successfully ✅",
+        "success"
+      );
 
     } catch (e) {
       console.error(e);

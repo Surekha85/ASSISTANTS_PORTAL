@@ -122,44 +122,13 @@ export const authAPI = {
 
   // 📄 JOB APPLICATIONS (WEEKLY)
   getJobApplications: async (candidateId, date) => {
-    const baseUrl = getApiBaseUrl();
-
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem(config.JWT_STORAGE_KEY)
-        : null;
-
-    return fetch(
-      `${baseUrl}/assistant/candidate/${candidateId}/job-applications?date=${date}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-      }
-    )
-      .then(res => res.text())
-      .then(text => {
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          throw new Error("Invalid JSON");
-        }
-
-        if (data?.body && typeof data.body === "string") {
-          try {
-            data = JSON.parse(data.body);
-          } catch {}
-        }
-
-        return data;
-      });
+    return makeAPIRequest(
+      `/assistant/candidate/${candidateId}/job-applications?date=${date}`
+    );
   },
 
   // ✅ NEW API (IMPORTANT)
-  createJobApplication: async (payload) => {
+  createandUpdateJobApplication: async (payload) => {
     return makeAPIRequest("/assistant/job-drafts", {
       method: "POST",
       body: JSON.stringify(payload),
