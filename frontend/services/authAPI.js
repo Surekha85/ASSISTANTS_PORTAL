@@ -17,6 +17,8 @@ class AuthAPIError extends Error {
     this.status = status;
   }
 };
+
+// Api Request 
 const makeAPIRequest = async (endpoint, options = {}) => {
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
