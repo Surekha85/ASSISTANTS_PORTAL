@@ -171,7 +171,7 @@ export default function GithubActivities() {
   };
 
   return (
-    <div className="min-h-screen p-6 bg-white dark:bg-[#0f172a] text-black dark:text-white">
+    <div className="min-h-screen p-6 bg-[var(--bg)] text-[var(--text)]">
 
       {/* 🔥 TOASTER */}
       {toast.message && (

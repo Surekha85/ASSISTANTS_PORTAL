@@ -90,23 +90,6 @@ export const authAPI = {
   },
 
   // ============================
-  // 🚀 PORTFOLIO APIs (NEW)
-  // ============================
-
-  // 🔹 GET ALL PORTFOLIOS (you must add backend GET)
-  getPortfolios: async () => {
-    return makeAPIRequest("/portfolio");
-  },
-
-  // 🔹 CREATE / UPDATE (same API)
-  savePortfolio: async (payload) => {
-    return makeAPIRequest("/portfolio", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-
-  // ============================
   // EXISTING APIs (unchanged)
   // ============================
 
@@ -132,8 +115,15 @@ export const authAPI = {
   // PORTFOLIO 
   getPortfolio: async (candidateId) => {
     return makeAPIRequest(
-      `/assistant/candidate/${candidateId}/job-applications?date=${date}`
+      `/assistant/candidate/${candidateId}/portfolio`
     );
+  },
+
+  createPortfolio: async (payload) => {
+    return makeAPIRequest("/assistant/portfolio", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
   },
 
   // ✅ NEW API (IMPORTANT)
