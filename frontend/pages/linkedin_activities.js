@@ -15,8 +15,6 @@ const taskTypeStyles = {
 export default function LinkedInActivities() {
   const router = useRouter();
   const { candidateId } = router.query;
-  const [tasks, setTasks] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalHeight, setModalHeight] = useState("auto");
   const today = new Date().toISOString().split("T")[0];
   const [date, setDate] = useState(today);
@@ -42,6 +40,7 @@ export default function LinkedInActivities() {
   const toggleExpand = (id) => {
     setExpandedId(expandedId === id ? null : id);
   };
+
   const getTaskIcon = (type) => {
     switch (type) {
       case "TIPS":
@@ -189,13 +188,6 @@ export default function LinkedInActivities() {
             onChange={handleDateChange}
             className="p-2 rounded border"
           />
-
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
-          >
-            <Plus size={16} /> Add Task
-          </button>
         </div>
       </div>
 
@@ -368,19 +360,6 @@ export default function LinkedInActivities() {
             );
           })}
         </div>
-      )}
-
-      {/* POPUP (UNCHANGED) */}
-      {isModalOpen && (
-        <TaskPopup
-          candidateId={candidateId}
-          modalHeight={modalHeight}
-          onClose={() => setIsModalOpen(false)}
-          onSave={(task) => {
-            setLinkedinTasks((prev) => [...prev, task]);
-            setIsModalOpen(false);
-          }}
-        />
       )}
     </div>
   );
