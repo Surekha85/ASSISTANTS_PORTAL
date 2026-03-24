@@ -129,6 +129,13 @@ export const authAPI = {
     );
   },
 
+  // PORTFOLIO 
+  getPortfolio: async (candidateId) => {
+    return makeAPIRequest(
+      `/assistant/candidate/${candidateId}/job-applications?date=${date}`
+    );
+  },
+
   // ✅ NEW API (IMPORTANT)
   createandUpdateJobApplication: async (payload) => {
     return makeAPIRequest("/assistant/job-drafts", {
