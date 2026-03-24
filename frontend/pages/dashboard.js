@@ -120,7 +120,7 @@ export default function AssistantDashboard() {
 
       {/* 🔥 SIDEBAR ONLY AFTER SELECT */}
       {selectedCandidate && (
-        <aside className="w-72 p-5 bg-[var(--card)] border-r border-[var(--border)]">
+        <aside className="w-72 m-4 rounded-2xl p-5 bg-[var(--card)] border border-[var(--border)] overflow-hidden">
 
           <div className="bg-[var(--bg-secondary)] p-4 rounded-xl mb-6">
             <p className="font-semibold">
@@ -237,22 +237,29 @@ export default function AssistantDashboard() {
                           <p className="font-semibold">
                             {c.first_name} {c.last_name}
                           </p>
-                          <p className="text-sm opacity-80">{c.email}</p>
-                          <p className="text-xs opacity-70">
-                            {c?.address?.city} • {c?.address?.state}
+
+                          <p className="text-sm opacity-80">
+                            {c.email}
                           </p>
+
+                          <div className="flex items-center gap-2 text-xs opacity-70">
+                            <span>
+                              {c?.address?.city} • {c?.address?.state}
+                            </span>
+
+                            {c?.address?.country && (
+                              <>
+                                <MapPin size={14} className="opacity-70" />
+                                <span>{c.address.country}</span>
+                              </>
+                            )}
+                          </div>
+
                           <p className="text-xs opacity-70">
                             📞 <span>{c.phone}</span>
                           </p>
                         </div>
                       </div>
-
-                      {c?.address?.country && (
-                        <div className="flex items-center gap-2 text-sm opacity-80">
-                          <MapPin size={16} />
-                          <span>{c.address.country}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 );

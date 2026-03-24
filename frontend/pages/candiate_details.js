@@ -45,18 +45,18 @@ export default function CandidateDetails() {
 
       {/* HEADER */}
       <div className="flex items-center gap-4 p-5 border-b border-[var(--border)] bg-[var(--card)] sticky top-0 z-10">
-           <Link href="/dashboard" className="relative group">
-            <span className="btn-back hover flex items-center gap-2">
-              <ArrowLeft size={16} />
-              Back to Dashboard
-            </span>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-semibold">
-              Details of  {data.first_name} {data.last_name}
-            </h1>
-          </div>
+        <Link href="/dashboard" className="relative group">
+          <span className="btn-back hover flex items-center gap-2">
+            <ArrowLeft size={16} />
+            Back to Dashboard
+          </span>
+        </Link>
+        <div>
+          <h1 className="text-2xl font-semibold">
+            Details of {data.first_name} {data.last_name}
+          </h1>
         </div>
+      </div>
 
       {/* BODY */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -97,13 +97,6 @@ export default function CandidateDetails() {
           {renderObject(data.dedicatedGmailAccount, copy, copied)}
         </Section>
 
-        {/* 🔥 FALLBACK (NO FIELD MISSED EVER)
-        <Section title="All Data (Raw)">
-          <pre className="text-xs bg-[var(--bg-secondary)] p-4 rounded-lg overflow-auto">
-            {JSON.stringify(data, null, 2)}
-          </pre>
-        </Section> */}
-
       </div>
     </div>
   );
@@ -115,36 +108,35 @@ function renderObject(obj, copy, copied) {
 
   return Object.entries(obj).map(([k, v]) => {
     if (Array.isArray(v)) {
-    return (
-        <div key={k} className="col-span-2 group border border-[var(--border)] rounded-lg p-3 bg-[var(--bg-secondary)]">
+      return (
+        <div key={k} className="col-span-2 border border-[var(--border)] rounded-lg p-3 bg-[var(--bg-secondary)]">
 
-        {/* LABEL */}
-        <div className="flex justify-between items-center mb-2">
+          <div className="flex justify-between items-center mb-2">
             <p className="text-xs text-[var(--text-secondary)]">{k}</p>
 
             {/* COPY BUTTON (HOVER) */}
             <button
-            onClick={() => copy(v.join(", "), k)}
-            className="opacity-0 group-hover:opacity-100 transition"
+              onClick={() => copy(v.join(", "), k)}
+              className="opacity-70 hover:opacity-100 transition"
             >
-            {copied === k ? <Check size={16} /> : <Copy size={16} />}
+              {copied === k ? <Check size={16} /> : <Copy size={16} />}
             </button>
-        </div>
+          </div>
 
         {/* SKILLS LIST */}
-        <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             {v.map((item, i) => (
-            <span
+              <span
                 key={i}
                 className="px-3 py-1 rounded-full bg-[var(--bg)] text-sm"
-            >
+              >
                 {item}
-            </span>
+              </span>
             ))}
-        </div>
+          </div>
 
         </div>
-    );
+      );
     }
 
     return (
@@ -175,21 +167,21 @@ function Section({ title, children }) {
 /* FIELD */
 function Field({ label, value, copy, copied, id }) {
   return (
-    <div className="group flex justify-between items-center border border-[var(--border)] rounded-lg px-3 py-2 bg-[var(--bg-secondary)]">
+    <div className="flex justify-between items-center border border-[var(--border)] rounded-lg px-3 py-2 bg-[var(--bg-secondary)]">
 
-        <div className="overflow-hidden">
-            <p className="text-xs text-[var(--text-secondary)]">{label}</p>
-            <p className="text-sm font-medium truncate">{value || "-"}</p>
-        </div>
+      <div className="overflow-hidden">
+        <p className="text-xs text-[var(--text-secondary)]">{label}</p>
+        <p className="text-sm font-medium truncate">{value || "-"}</p>
+      </div>
 
         {/* COPY BUTTON (HIDDEN BY DEFAULT) */}
-        <button
-            onClick={() => copy(value, id)}
-            className="opacity-0 group-hover:opacity-100 transition"
-        >
-            {copied === id ? <Check size={16} /> : <Copy size={16} />}
-        </button>
+      <button
+        onClick={() => copy(value, id)}
+        className="opacity-70 hover:opacity-100 transition"
+      >
+        {copied === id ? <Check size={16} /> : <Copy size={16} />}
+      </button>
 
-        </div>
+    </div>
   );
 }
