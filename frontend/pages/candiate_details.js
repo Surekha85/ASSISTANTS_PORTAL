@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, ArrowLeft } from "lucide-react";
 import { authAPI } from "../services/authAPI";
+import Link from "next/link";
 
 export default function CandidateDetails() {
   const router = useRouter();
@@ -44,12 +45,12 @@ export default function CandidateDetails() {
 
       {/* HEADER */}
       <div className="flex items-center gap-4 p-5 border-b border-[var(--border)] bg-[var(--card)] sticky top-0 z-10">
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="mb-2 px-4 py-2 rounded-lg bg-blue-600 text-white btn-blue"
-          >
-            ⬅ Back
-          </button>
+           <Link href="/dashboard" className="relative group">
+            <span className="btn-back hover flex items-center gap-2">
+              <ArrowLeft size={16} />
+              Back to Dashboard
+            </span>
+          </Link>
           <div>
             <h1 className="text-2xl font-semibold">
               Details of  {data.first_name} {data.last_name}

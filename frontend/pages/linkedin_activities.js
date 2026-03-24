@@ -3,7 +3,9 @@ import { Calendar, Plus, ArrowLeft } from "lucide-react";
 import { authAPI } from "../services/authAPI";
 import { useRouter } from "next/router";
 import toast from "react-hot-toast";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Pencil } from "lucide-react";
+import Link from "next/link";
+
 
 const taskTypeStyles = {
   PROFILE: "bg-[var(--profile)]/10 text-[var(--profile)]",
@@ -15,6 +17,8 @@ const taskTypeStyles = {
 export default function LinkedInActivities() {
   const router = useRouter();
   const { candidateId } = router.query;
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
   const [modalHeight, setModalHeight] = useState("auto");
   const today = new Date().toISOString().split("T")[0];
   const [date, setDate] = useState(today);
@@ -36,6 +40,9 @@ export default function LinkedInActivities() {
   };
 
   const week = getWeekRange(date);
+  useEffect(() => {
+    document.body.style.overflow = isModalOpen ? "hidden" : "auto";
+  }, [isModalOpen]);
 
   const toggleExpand = (id) => {
     setExpandedId(expandedId === id ? null : id);
@@ -164,12 +171,12 @@ export default function LinkedInActivities() {
       {/* HEADER */}
       <div className="flex items-center justify-between mb-6 sticky top-[64px] z-10 bg-[var(--bg-primary)] pb-4">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg"
-          >
-            ⬅ Back
-          </button>
+          <Link href="/dashboard" className="relative group">
+            <span className="btn-back hover flex items-center gap-2">
+              <ArrowLeft size={16} />
+              Back to Dashboard
+            </span>
+          </Link>
 
           <div>
             <h1 className="text-2xl font-semibold">
@@ -188,6 +195,16 @@ export default function LinkedInActivities() {
             onChange={handleDateChange}
             className="p-2 rounded border"
           />
+
+          <button
+            onClick={() => {
+              setEditingTask(null);
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
+          >
+            <Plus size={16} /> Add Task
+          </button>
         </div>
       </div>
 
@@ -264,10 +281,10 @@ export default function LinkedInActivities() {
                     {/* STATUS */}
                     <span
                       className={`px-3 py-1 rounded-full text-xs ${task.status === "COMPLETED"
-                          ? "bg-green-400/20 text-green-300"
-                          : task.status === "IN_PROGRESS"
-                            ? "bg-blue-400/20 text-blue-300"
-                            : "bg-yellow-400/20 text-yellow-300"
+                        ? "bg-green-400/20 text-green-300"
+                        : task.status === "IN_PROGRESS"
+                          ? "bg-blue-400/20 text-blue-300"
+                          : "bg-yellow-400/20 text-yellow-300"
                         }`}
                     >
                       {task.status}
@@ -279,6 +296,16 @@ export default function LinkedInActivities() {
                       className="p-2 rounded-md hover:bg-[var(--bg-secondary)]"
                     >
                       {isExpanded ? "▲" : "▼"}
+                    </button>
+                    {/* ✏️ EDIT BUTTON */}
+                    <button
+                      onClick={() => {
+                        setEditingTask(task);
+                        setIsModalOpen(true);
+                      }}
+                      className="p-2 rounded-md hover:bg-[var(--bg-secondary)]"
+                    >
+                      <Pencil size={16} />
                     </button>
                   </div>
                 </div>
@@ -361,13 +388,29 @@ export default function LinkedInActivities() {
           })}
         </div>
       )}
+      {isModalOpen && (
+        <TaskPopup
+          candidateId={candidateId}
+          modalHeight={modalHeight}
+          editingTask={editingTask}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingTask(null); // 🔥 RESET
+          }}
+          onSave={() => {
+            setIsModalOpen(false);
+            setEditingTask(null); // 🔥 RESET
+            fetchLinkedinTasks(date);
+          }}
+        />
+      )}
     </div>
   );
 }
 
 /* ================= POPUP ================= */
 
-function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
+function TaskPopup({ onClose, onSave, candidateId, modalHeight, editingTask }) {
   const [taskType, setTaskType] = useState("PROFILE");
 
   const [form, setForm] = useState({
@@ -381,6 +424,24 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
     recipient_title: "",
     tips_content: "",
   });
+
+  useEffect(() => {
+  if (editingTask) {
+    setTaskType(editingTask.task_type);
+
+    setForm({
+      title: editingTask.title || "",
+      due_date: editingTask.due_date?.split("T")[0] || "", // ✅ FIX DATE
+      what_to_do: editingTask.what_to_do || "",
+      copy_paste_content: editingTask.copy_paste_content || "",
+      section: editingTask.section || "",
+      linkedin_profile_url: editingTask.linkedin_profile_url || "",
+      recipient_name: editingTask.recipient_name || "",
+      recipient_title: editingTask.recipient_title || "",
+      tips_content: editingTask.tips_content || "",
+    });
+  }
+}, [editingTask]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -417,20 +478,25 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
         }),
       };
 
-      console.log("🚀 PAYLOAD:", payload);
+      if (editingTask) {
+        // ✏️ UPDATE API
+        await authAPI.createLinkedinActivity({
+          ...payload,
+          task_id: editingTask.task_id,
+        });
 
-      await authAPI.createLinkedinActivity(payload);
+        toast.success("Task updated successfully ✏️");
+      } else {
+        // ➕ CREATE API
+        await authAPI.createLinkedinActivity(payload);
 
-      // ✅ SUCCESS TOAST
-      toast.success("Task created successfully ✅");
+        toast.success("Task created successfully ✅");
+      }
 
       onSave(payload);
 
     } catch (err) {
-      console.error("❌ ERROR:", err);
-
-      // ❌ ERROR TOAST
-      toast.error(err?.message || "Failed to create task ❌");
+      toast.error(err?.message || "Failed ❌");
     }
   };
 
@@ -446,7 +512,9 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
 
         {/* HEADER (FIXED) */}
         <div className="p-6 pb-4">
-          <h2 className="text-lg font-semibold mb-4">Create Task</h2>
+          <h2 className="text-lg font-semibold mb-4">
+            {editingTask ? "Update Task" : "Create Task"}
+          </h2>
 
           <div className="grid grid-cols-4 gap-2">
             {types.map((type) => (
@@ -454,8 +522,8 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
                 key={type}
                 onClick={() => setTaskType(type)}
                 className={`p-2 rounded-lg text-xs ${taskType === type
-                    ? "bg-blue-600"
-                    : "border border-gray-600 text-gray-400"
+                  ? "bg-blue-600"
+                  : "border border-gray-600 text-gray-400"
                   }`}
               >
                 {type}
@@ -473,6 +541,7 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
             </label>
             <input
               name="title"
+              value={form.title}
               onChange={handleChange}
               className="w-full p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]"
             />
@@ -485,6 +554,7 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
             <input
               name="due_date"
               type="date"
+              value={form.due_date}
               onChange={handleChange}
               className="w-full p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]"
             />
@@ -496,6 +566,7 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
             </label>
             <textarea
               name="what_to_do"
+              value={form.what_to_do}
               onChange={handleChange}
               className="w-full p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]"
             />
@@ -510,6 +581,7 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
                 </label>
                 <input
                   name="section"
+                  value={form.section}
                   onChange={handleChange}
                   className="w-full p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]"
                 />
@@ -521,6 +593,7 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
                 </label>
                 <textarea
                   name="copy_paste_content"
+                  value={form.copy_paste_content}
                   onChange={handleChange}
                   className="w-full p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]"
                 />
@@ -536,6 +609,7 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
               </label>
               <textarea
                 name="copy_paste_content"
+                value={form.copy_paste_content}
                 onChange={handleChange}
                 className="w-full p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]"
               />
@@ -549,6 +623,7 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
                 <label className="block text-sm mb-1">Recipient Name *</label>
                 <input
                   name="recipient_name"
+                  value={form.recipient_name}
                   onChange={handleChange}
                   className="w-full p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]"
                 />
@@ -558,6 +633,7 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
                 <label className="block text-sm mb-1">Recipient Title</label>
                 <input
                   name="recipient_title"
+                  value={form.recipient_title}
                   onChange={handleChange}
                   className="w-full p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]"
                 />
@@ -567,6 +643,7 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
                 <label className="block text-sm mb-1">LinkedIn Profile URL *</label>
                 <input
                   name="linkedin_profile_url"
+                  value={form.linkedin_profile_url}
                   onChange={handleChange}
                   className="w-full p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]"
                 />
@@ -576,6 +653,7 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
                 <label className="block text-sm mb-1">Message *</label>
                 <textarea
                   name="copy_paste_content"
+                  value={form.copy_paste_content}
                   onChange={handleChange}
                   className="w-full p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]"
                 />
@@ -588,7 +666,8 @@ function TaskPopup({ onClose, onSave, candidateId , modalHeight  }) {
             <div className="mb-4">
               <label className="block text-sm mb-1">Tips Content *</label>
               <textarea
-                name="tips_content"
+              name="tips_content"
+                value={form.tips_content}
                 onChange={handleChange}
                 className="w-full p-2 rounded bg-[var(--bg-primary)] border border-[var(--border-color)]"
               />

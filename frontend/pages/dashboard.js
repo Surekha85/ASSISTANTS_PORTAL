@@ -5,6 +5,7 @@ import {
   Github,
   Linkedin,
   User,
+  Check ,
   FileText,
   LayoutGrid } from "lucide-react";
 import { authAPI } from "../services/authAPI";

@@ -4,7 +4,7 @@ import Link from "next/link";
 import {
   User,
   CreditCard,
-  Settings,
+  Settings, ArrowLeft
 } from "lucide-react";
 
 export default function Profile() {
@@ -20,9 +20,12 @@ export default function Profile() {
     <div className=" bg-[var(--bg)] text-[var(--text)] min-h-screen bg-[#0f172a] text-white px-6 py-6">
 
       {/* BACK */}
-      <Link href="/dashboard" className="text-sm text-gray-400 hover:text-white">
-        ← Back to Dashboard
-      </Link>
+       <Link href="/dashboard" className="relative group">
+          <span className="btn-back hover flex items-center gap-2">
+            <ArrowLeft size={16} />
+            Back to Dashboard
+          </span>
+        </Link>
 
       {/* TITLE */}
       <h1 className="text-3xl font-bold text-blue-400 mt-4">

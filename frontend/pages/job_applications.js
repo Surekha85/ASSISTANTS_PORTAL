@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { authAPI } from "../services/authAPI";
 import { useSortableData } from "../hooks/sortableData";
 import { ChevronDown, ChevronUp, Pencil, Target, Zap } from "lucide-react";
-import { ExternalLink, Download } from "lucide-react";
+import { ExternalLink, Download , ArrowLeft} from "lucide-react";
+import Link from "next/link";
 
 export default function JobApplications() {
   const router = useRouter();
@@ -337,12 +338,12 @@ export default function JobApplications() {
       <div className="flex justify-between items-center mb-6">
 
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="mb-2 px-4 py-2 rounded-lg bg-blue-600 text-white btn-blue"
-          >
-            ← Back
-          </button>
+           <Link href="/dashboard" className="relative group">
+            <span className="btn-back hover flex items-center gap-2">
+              <ArrowLeft size={16} />
+              Back to Dashboard
+            </span>
+          </Link>
           <div>
             <h1 className="text-2xl font-semibold">
               Job Applications of {candidateId}
@@ -373,8 +374,22 @@ export default function JobApplications() {
 
       {/* EMPTY */}
       {sortedItems.length === 0 && (
-        <div className="empty-box">
-          <p className="text-lg font-medium">No Applications Found</p>
+        <div className="flex flex-col items-center justify-center mt-24">
+
+          {/* ICON */}
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mb-6 animate-float">
+            <span className="text-3xl">📭</span>
+          </div>
+
+          {/* TITLE */}
+          <h2 className="text-2xl font-semibold mb-2">
+            No Job Applications Found
+          </h2>
+
+          {/* SUBTEXT */}
+          <p className="text-gray-400 text-sm max-w-md text-center">
+            There are no applications scheduled for this selected date or week.
+          </p>
         </div>
       )}
 

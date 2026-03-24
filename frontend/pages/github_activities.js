@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import { authAPI } from "../services/authAPI";
+import { ArrowLeft, Github } from "lucide-react";
+import Link from "next/link";
 
 export default function GithubActivities() {
   const router = useRouter();
@@ -183,12 +185,12 @@ export default function GithubActivities() {
       <div className="flex justify-between items-center mb-6">
 
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white"
-          >
-            ⬅ Back
-          </button>
+          <Link href="/dashboard" className="relative group">
+            <span className="btn-back hover flex items-center gap-2">
+              <ArrowLeft size={16} />
+              Back to Dashboard
+            </span>
+          </Link>
 
           <div>
             <h1 className="text-2xl font-bold">GitHub Activities</h1>
@@ -217,200 +219,195 @@ export default function GithubActivities() {
         </div>
       </div>
 
-
-      {!loading && data && (!data.projects || data.projects.length === 0) && (
-        <div className="flex items-center justify-center h-[70vh]">
-
-          <div className="text-center">
-
-            <div className="
-              w-20 h-20 mx-auto mb-5
-              flex items-center justify-center
-              rounded-full
-              bg-[var(--bg-secondary)]
-              text-[var(--primary)]
-            ">
-              📂
-            </div>
-
-            <h2 className="text-lg font-semibold">
-              No GitHub Projects Found
-            </h2>
-
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              No GitHub projects are available for this candidate yet.
-            </p>
-
-          </div>
-
-        </div>
-      )}
-
-      {/* DASHBOARD */}
-      {data && data.projects && data.projects.length > 0 && (
-        <div className="space-y-6">
-
-          {/* CURRENT PROJECT */}
-          <div className="p-6 rounded-xl border bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700">
-
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-blue-600">✔</span>
-                <h2 className="font-semibold text-lg">Current Project</h2>
+      {!loading && (
+        <>
+          {/* ✅ NO PROJECTS */}
+          {!data && (
+            <div className="flex flex-col items-center justify-center mt-24">
+              <div className="w-20 h-20 rounded-full bg-[#0d1117] flex items-center justify-center mb-6 border border-gray-700">
+                <Github size={36} className="text-white" />
               </div>
+
+              <h2 className="text-lg font-semibold mb-2">
+                No Projects Found
+              </h2>
+
+              <p className="text-gray-400 text-sm text-center">
+                This candidate has no GitHub projects yet.
+              </p>
             </div>
+          )}
 
-            {currentProject && (
-              <div className="grid grid-cols-2 gap-6">
+          {/* ✅ HAS PROJECTS */}
+          {data && data.projects && data.projects.length > 0 && (
+            <div className="space-y-6">
+              {/* KEEP YOUR EXISTING DASHBOARD CODE HERE */}
+              <div className="space-y-6">
 
-                {/* LEFT SIDE */}
-                <div>
-                  <h3 className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                    {currentProject.project_name}
-                  </h3>
+                {/* CURRENT PROJECT */}
+                <div className="p-6 rounded-xl border bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700">
 
-                  <p className="text-sm text-gray-500 mt-1">
-                    Started: {currentProject.start_date?.split("T")[0]}
-                  </p>
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-blue-600">✔</span>
+                      <h2 className="font-semibold text-lg">Current Project</h2>
+                    </div>
+                  </div>
+
+                  {selectedProject && (
+                    <div className="grid grid-cols-2 gap-6">
+
+                      {/* LEFT SIDE */}
+                      <div>
+                        <h3 className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                          {selectedProject.project_name}
+                        </h3>
+
+                        <p className="text-sm text-gray-500 mt-1">
+                          Started: {selectedProject.start_date?.split("T")[0]}
+                        </p>
+                      </div>
+
+                      {/* RIGHT SIDE */}
+                      <div className="text-sm">
+
+                        <p className="font-semibold mb-2">
+                          This Week: {totalCommits} Commits
+                        </p>
+
+                        <p className="text-gray-500">
+                          Status:{" "}
+                          <span className="text-green-500 font-medium">
+                            ● {selectedProject.status || "Actively Developing"}
+                          </span>
+                        </p>
+
+                        <p className="text-gray-500 mt-2">
+                          Estimation Date: {selectedProject.estimation_date || "-"}
+                        </p>
+
+                      </div>
+
+                    </div>
+                  )}
+
                 </div>
 
-                {/* RIGHT SIDE */}
-                <div className="text-sm">
+                {/* ACTIVITY + SUMMARY */}
+                <div className="grid grid-cols-3 gap-6">
 
-                  <p className="font-semibold mb-2">
-                    This Week: {totalCommits} Commits
-                  </p>
-
-                  <p className="text-gray-500">
-                    Status:{" "}
-                    <span className="text-green-500 font-medium">
-                      ● {currentProject.status || "Actively Developing"}
-                    </span>
-                  </p>
-
-                  <p className="text-gray-500 mt-2">
-                    Estimation Date: {currentProject.estimation_date || "-"}
-                  </p>
-
-                </div>
-
-              </div>
-            )}
-
-          </div>
-
-          {/* ACTIVITY + SUMMARY */}
-          <div className="grid grid-cols-3 gap-6">
-
-            <div
-              className={`col-span-2 h-[30vh] p-5 rounded-xl border bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700 flex flex-col overflow-y-auto`}>
-              <h3 className="mb-4 font-semibold">Recent Activity</h3>
-
-              {currentProject?.commits?.length === 0 ? (
-                <div className="flex items-center justify-center h-32 text-gray-500">
-                  No Recent Activity Found
-                </div>
-              ) : (
-                currentProject?.commits?.map((c, i) => (
                   <div
-                    key={i}
-                    className="flex justify-between p-4 mb-3 rounded-xl bg-gray-100 dark:bg-[#0f172a] card-hover"
-                  >
-                    <div>
-                      <p>{c.message}</p>
-                      <p className="text-xs text-gray-500">
-                        {formatDateTime(c.commit_date)}
-                      </p>
+                    className={`col-span-2 h-[32vh] p-5 rounded-xl border bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700 flex flex-col overflow-y-auto`}>
+                    <h3 className="mb-4 font-semibold">Recent Activity</h3>
+
+                    {selectedProject?.commits?.length === 0 ? (
+                      <div className="flex items-center justify-center h-32 text-gray-500">
+                        No Recent Activity Found
+                      </div>
+                    ) : (
+                      selectedProject?.commits?.map((c, i) => (
+                        <div
+                          key={i}
+                          className="flex justify-between p-4 mb-3 rounded-xl bg-gray-100 dark:bg-[#0f172a] card-hover"
+                        >
+                          <div>
+                            <p>{c.message}</p>
+                            <p className="text-xs text-gray-500">
+                              {formatDateTime(c.commit_date)}
+                            </p>
+                          </div>
+
+                          <a
+                            href={c.commit_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-500 text-xs"
+                          >
+                            View →
+                          </a>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="p-5 h-[32vh] rounded-xl border bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700">
+
+                    <h3 className="mb-4 font-semibold text-lg">Project Summary</h3>
+
+                    {/* GRID STATS */}
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+
+                      {/* PROJECTS */}
+                      <div className="p-4 rounded-lg bg-blue-50 dark:bg-[#0f172a] flex items-center justify-between card-hover">
+                        <div>
+                          <p className="text-xs text-gray-500">Projects</p>
+                          <p className="text-xl font-bold">{data.total_projects}</p>
+                        </div>
+                        <span className="text-2xl">📁</span>
+                      </div>
+
+                      {/* COMMITS */}
+                      <div className="p-4 rounded-lg bg-green-50 dark:bg-[#0f172a] flex items-center justify-between card-hover">
+                        <div>
+                          <p className="text-xs text-gray-500">Commits</p>
+                          <p className="text-xl font-bold">{totalCommits}</p>
+                        </div>
+                        <span className="text-2xl">✅</span>
+                      </div>
+
                     </div>
 
-                    <a
-                      href={c.commit_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-blue-500 text-xs"
-                    >
-                      View →
-                    </a>
+                    {/* EXTRA INSIGHTS */}
+                    <div className="text-sm text-gray-500 space-y-1">
+                      <p>🔥 Active Project: {selectedProject?.project_name}</p>
+                    </div>
+
                   </div>
-                ))
-              )}
-            </div>
-
-           <div className="p-5 h-[30vh] rounded-xl border bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700">
-
-              <h3 className="mb-4 font-semibold text-lg">Project Summary</h3>
-
-              {/* GRID STATS */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-
-                {/* PROJECTS */}
-                <div className="p-4 rounded-lg bg-blue-50 dark:bg-[#0f172a] flex items-center justify-between card-hover">
-                  <div>
-                    <p className="text-xs text-gray-500">Projects</p>
-                    <p className="text-xl font-bold">{data.total_projects}</p>
-                  </div>
-                  <span className="text-2xl">📁</span>
                 </div>
 
-                {/* COMMITS */}
-                <div className="p-4 rounded-lg bg-green-50 dark:bg-[#0f172a] flex items-center justify-between card-hover">
-                  <div>
-                    <p className="text-xs text-gray-500">Commits</p>
-                    <p className="text-xl font-bold">{totalCommits}</p>
-                  </div>
-                  <span className="text-2xl">✅</span>
-                </div>
+                {/* PROJECT GRID */}
+                <div>
+                  <h3 className="mb-4 font-semibold">Github Projects</h3>
 
-              </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    {data.projects.map((p, i) => (
+                      <div
+                        key={i}
+                        onClick={() => {
+                          setSelectedProject(p);
 
-              {/* EXTRA INSIGHTS */}
-              <div className="text-sm text-gray-500 space-y-1">
-                <p>🔥 Active Project: {currentProject?.project_name}</p>
-              </div>
+                          const today = new Date().toISOString().split("T")[0];
 
-            </div>
-          </div>
-
-          {/* PROJECT GRID */}
-          <div>
-            <h3 className="mb-4 font-semibold">Github Projects</h3>
-
-            <div className="grid grid-cols-3 gap-4">
-              {data.projects.map((p, i) => (
-                <div
-                  key={i}
-                  onClick={() => {
-                    setSelectedProject(p);
-
-                    const today = new Date().toISOString().split("T")[0];
-
-                    setDate(today);
-                    localStorage.setItem("selectedDate", today);
-                  }}
-                  className={`p-4 rounded-xl border cursor-pointer 
+                          setDate(today);
+                          localStorage.setItem("selectedDate", today);
+                        }}
+                        className={`p-4 rounded-xl border cursor-pointer 
                     bg-white dark:bg-[#1e293b] border-gray-200 dark:border-slate-700
-                    ${currentProject?.project_id === p.project_id ? "ring-2 ring-blue-500" : ""}
+                    ${selectedProject?.project_id === p.project_id ? "ring-2 ring-blue-500" : ""}
                   `}
-                >
-                  <h4 className="font-semibold">{p.project_name}</h4>
-                  <p className="text-sm text-gray-500">
-                    Commits: {p.commits?.length || 0}
-                  </p>
+                      >
+                        <h4 className="font-semibold">{p.project_name}</h4>
+                        <p className="text-sm text-gray-500">
+                          Commits: {p.commits?.length || 0}
+                        </p>
 
-                  <a
-                    href={p.repo_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-500 text-sm"
-                  >
-                    View Repo →
-                  </a>
+                        <a
+                          href={p.repo_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-500 text-sm"
+                        >
+                          View Repo →
+                        </a>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-        </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* 🔥 PREMIUM MODAL */}

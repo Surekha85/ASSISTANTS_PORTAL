@@ -145,34 +145,71 @@ html, body {
   text-rendering: optimizeLegibility;
 }
 
-/* Light Theme */
-.light {
-  --bg: #ffffff;
-  --bg-secondary: #f1f5f9;
+/* ===================
+   Light Theme
+=================== */
+:root {
+  --bg: #f5f7fb;
   --card: #ffffff;
-  --text: #000000;
-  --text-secondary: #6b7280;
-  --border: #e5e7eb;
+  --border: #e6e8ef;
 
-  /* 🔥 STRONGER PRIMARY */
-  --primary: #2563eb;
-  --primary-contrast: #ffffff;
+  --text: #1f2937;
+  --text-secondary: #6b7280;
+
+  --primary: #6366f1;
+  --primary-light: #818cf8;
+
+  --chip-bg: #eef2ff;
+  --success-bg: #dcfce7;
+  --success-text: #16a34a;
 }
 
-/* Dark Theme */
 .dark {
-  --bg: #0f172a;
-  --bg-secondary: #020617;
+  --bg: #0b1120;
   --card: #111827;
-  --text: #ffffff;
-  --text-secondary: #9ca3af;
   --border: #1f2937;
 
-  --primary: #3b82f6;
-  --primary-contrast: #ffffff;
+  --text: #e5e7eb;
+  --text-secondary: #9ca3af;
+
+  --primary: #818cf8;
+  --primary-light: #a5b4fc;
+
+  --chip-bg: #1e293b;
+  --success-bg: #14532d;
+  --success-text: #4ade80;
 }
 
 
+/* BACK BUTTON (PILL STYLE) */
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-back:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 /* ===================
    Link Hover Effects
 =================== */
