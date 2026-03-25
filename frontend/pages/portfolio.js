@@ -14,7 +14,8 @@ export default function PortfolioDashboard() {
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState([]);
   const [showRequests, setShowRequests] = useState(false);
-  const [selectedRequests, setSelectedRequests] = useState([]);
+  const [toast, setToast] = useState("");
+  const [localRequests, setLocalRequests] = useState([]);
 
   const [form, setForm] = useState({
     github_repo_url: "",
@@ -53,29 +54,19 @@ export default function PortfolioDashboard() {
     };
   };
 
-  const toggleSelect = (id) => {
-    setSelectedRequests((prev) =>
-      prev.includes(id)
-        ? prev.filter((r) => r !== id)
-        : [...prev, id]
-    );
-  };
-
   const saveRequests = async () => {
-    if (selectedRequests.length === 0) return;
-
     try {
-      for (let id of selectedRequests) {
-        await authAPI.updateChangeRequest({
-          jaa_candidate_id: candidateId,
-          request_id: id,
-          status: "COMPLETED",
-        });
-      }
+      await authAPI.createAndUpdatePortfolio({
+        jaa_candidate_id: candidateId,
+        change_requests: localRequests.map(({ _tempVisible, ...rest }) => rest),
+      });
 
-      setSelectedRequests([]);
       setShowRequests(false);
       fetchPortfolio();
+
+      setToast("Updated successfully");
+      setTimeout(() => setToast(""), 3000);
+
     } catch (e) {
       console.error(e);
     }
@@ -87,6 +78,7 @@ export default function PortfolioDashboard() {
       const normalized = normalizePortfolio(res);
       setPortfolio(normalized);
       setRequests(normalized?.change_requests || []);
+      setLocalRequests(normalized?.change_requests || []);
     } catch (err) {
       setPortfolio(null);
     }
@@ -121,31 +113,43 @@ export default function PortfolioDashboard() {
 
     setLoading(true);
     try {
-      await authAPI.createPortfolio({
+      await authAPI.createAndUpdatePortfolio({
         ...form,
         jaa_candidate_id: candidateId,
       });
 
       setShowModal(false);
       fetchPortfolio();
+      setToast("Created successfully");
     } catch { }
     setLoading(false);
   };
 
-  const pendingRequests = requests.filter(r => r.status === "PENDING");
+  const handleStatusChange = (req, newStatus) => {
+    const now = new Date().toISOString();
 
-  const markAsDone = async (req) => {
-    try {
-      await authAPI.updateChangeRequest({
-        jaa_candidate_id: candidateId,
-        request_id: req.request_id,
-        status: "COMPLETED"
-      });
-      fetchPortfolio();
-    } catch (e) {
-      console.error(e);
-    }
+    setLocalRequests((prev) =>
+      prev.map((r) =>
+        r.request_id === req.request_id
+          ? {
+            ...r,
+            status: newStatus,
+            completed_at:
+              newStatus === "COMPLETED" ? now : r.completed_at,
+            _tempVisible: true, // ✅ keep visible
+          }
+          : r
+      )
+    );
   };
+
+  const pendingRequests = localRequests.filter(
+    (r) =>
+      r.status === "PENDING" ||
+      r.status === "IN_PROGRESS" ||
+      r._tempVisible
+  );
+
 
   const hasPortfolio = !!portfolio;
 
@@ -163,11 +167,8 @@ export default function PortfolioDashboard() {
 
           <div>
             <h1 className="text-xl font-semibold">
-              Portfolio
+              Portfolio Details
             </h1>
-            <p className="text-sm text-[var(--text-secondary)]">
-              Candidate ID: {candidateId}
-            </p>
           </div>
         </div>
 
@@ -176,7 +177,7 @@ export default function PortfolioDashboard() {
           <div className="relative">
             <button
               onClick={() => setShowRequests(!showRequests)}
-              className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-500 text-black"
+              className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-500 text-black"
             >
               Requests
             </button>
@@ -322,11 +323,11 @@ export default function PortfolioDashboard() {
       </div>
 
       {showRequests && pendingRequests.length > 0 && (
-        <div className="fixed right-6 top-24 w-[380px] max-h-[50vh] bg-[var(--card)] border rounded-xl shadow-lg flex flex-col">
+        <div className="fixed right-6 top-24 w-[500px] max-h-[50vh] bg-[var(--card)] border rounded-xl shadow-lg flex flex-col">
 
           {/* HEADER */}
-          <div className="flex justify-between items-center p-3 border-b">
-            <h3>Requests</h3>
+          <div className="flex justify-between items-center p-3">
+            <h3>Requests ({pendingRequests.length}) </h3>
 
             <button onClick={() => setShowRequests(false)}>✕</button>
           </div>
@@ -334,24 +335,40 @@ export default function PortfolioDashboard() {
           {/* LIST */}
           <div className="p-4 space-y-3 overflow-y-auto flex-1">
             {pendingRequests.map((req) => (
-              <div key={req.request_id} className="border p-3 rounded flex justify-between items-center">
+              <div key={req.request_id} className="border p-3 rounded-xl flex justify-between items-start gap-4">
 
-                <div>
+                <div className="text-sm leading-5 text-[var(--text)] font-medium flex-1 pr-2 break-words whitespace-normal">
                   <p>{req.description}</p>
                 </div>
 
-                <input
-                  type="checkbox"
-                  checked={selectedRequests.includes(req.request_id)}
-                  onChange={() => toggleSelect(req.request_id)}
-                />
+                <select
+                  value={req.status}
+                  onChange={(e) => handleStatusChange(req, e.target.value)}
+                  className={`text-xs px-3 py-1.5 rounded-lg border outline-none transition font-medium min-w-[140px]
+                      bg-[var(--card)] border-[var(--border)]
+                      focus:ring-2 focus:ring-[var(--primary)]
+                      ${req.status === "PENDING"
+                          ? "text-yellow-400"
+                          : req.status === "IN_PROGRESS"
+                            ? "text-blue-400"
+                            : req.status === "COMPLETED"
+                              ? "text-green-400"
+                              : "text-red-400"
+                        }
+                    `}
+                  >
+                  <option value="PENDING">PENDING</option>
+                  <option value="IN_PROGRESS">IN PROGRESS</option>
+                  <option value="COMPLETED">COMPLETED</option>
+                  <option value="REJECTED">REJECTED</option>
+                </select>
 
               </div>
             ))}
           </div>
 
           {/* FOOTER */}
-          <div className="p-3 border-t flex justify-end gap-2">
+          <div className="p-3 flex justify-end gap-2">
             <button onClick={() => setShowRequests(false)}>
               Cancel
             </button>
@@ -367,7 +384,6 @@ export default function PortfolioDashboard() {
         </div>
       )}
 
-      {/* MODAL */}
       {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/40">
@@ -506,6 +522,11 @@ export default function PortfolioDashboard() {
             </div>
 
           </div>
+        </div>
+      )}
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+          {toast}
         </div>
       )}
 

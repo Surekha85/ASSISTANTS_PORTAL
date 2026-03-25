@@ -119,7 +119,7 @@ export const authAPI = {
     );
   },
 
-  createPortfolio: async (payload) => {
+  createAndUpdatePortfolio: async (payload) => {
     return makeAPIRequest("/assistant/portfolio", {
       method: "POST",
       body: JSON.stringify(payload),
