@@ -12,13 +12,18 @@ export default function PortfolioDashboard() {
   const [candidate, setCandidate] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+  const [requests, setRequests] = useState([]);
+  const [showRequests, setShowRequests] = useState(false);
+  const [selectedRequests, setSelectedRequests] = useState([]);
 
   const [form, setForm] = useState({
     github_repo_url: "",
     github_repo_name: "",
     vercel_project_name: "",
     vercel_deployment_url: "",
+    project_id: "",                 // ✅ optional
+    vercel_project_id: "",          // ✅ optional
+    deployment_status: "",          // ✅ optional
   });
 
   const [availableHeight, setAvailableHeight] = useState(0);
@@ -26,12 +31,8 @@ export default function PortfolioDashboard() {
   useEffect(() => {
     const calculateHeight = () => {
       const navbar = document.getElementById("app-navbar");
-
       if (navbar) {
-        const navHeight = navbar.offsetHeight;
-        const screenHeight = window.innerHeight;
-
-        setAvailableHeight(screenHeight - navHeight);
+        setAvailableHeight(window.innerHeight - navbar.offsetHeight);
       }
     };
 
@@ -52,10 +53,40 @@ export default function PortfolioDashboard() {
     };
   };
 
+  const toggleSelect = (id) => {
+    setSelectedRequests((prev) =>
+      prev.includes(id)
+        ? prev.filter((r) => r !== id)
+        : [...prev, id]
+    );
+  };
+
+  const saveRequests = async () => {
+    if (selectedRequests.length === 0) return;
+
+    try {
+      for (let id of selectedRequests) {
+        await authAPI.updateChangeRequest({
+          jaa_candidate_id: candidateId,
+          request_id: id,
+          status: "COMPLETED",
+        });
+      }
+
+      setSelectedRequests([]);
+      setShowRequests(false);
+      fetchPortfolio();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const fetchPortfolio = async () => {
     try {
       const res = await authAPI.getPortfolio(candidateId);
-      setPortfolio(normalizePortfolio(res));
+      const normalized = normalizePortfolio(res);
+      setPortfolio(normalized);
+      setRequests(normalized?.change_requests || []);
     } catch (err) {
       setPortfolio(null);
     }
@@ -65,7 +96,7 @@ export default function PortfolioDashboard() {
     try {
       const res = await authAPI.getCandidateDetails(candidateId);
       setCandidate(res);
-    } catch {}
+    } catch { }
   };
 
   useEffect(() => {
@@ -76,9 +107,15 @@ export default function PortfolioDashboard() {
   }, [candidateId]);
 
   const createPortfolio = async () => {
-    const requiredFields = Object.values(form).filter((v) => !v.trim());
+    const requiredFields = [
+      form.github_repo_url,
+      form.github_repo_name,
+      form.vercel_project_name,
+      form.vercel_deployment_url,
+    ].filter((v) => !v.trim());
+
     if (requiredFields.length > 0) {
-      alert("Fill all required fields");
+      alert("Fill required fields");
       return;
     }
 
@@ -91,8 +128,23 @@ export default function PortfolioDashboard() {
 
       setShowModal(false);
       fetchPortfolio();
-    } catch {}
+    } catch { }
     setLoading(false);
+  };
+
+  const pendingRequests = requests.filter(r => r.status === "PENDING");
+
+  const markAsDone = async (req) => {
+    try {
+      await authAPI.updateChangeRequest({
+        jaa_candidate_id: candidateId,
+        request_id: req.request_id,
+        status: "COMPLETED"
+      });
+      fetchPortfolio();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const hasPortfolio = !!portfolio;
@@ -101,22 +153,42 @@ export default function PortfolioDashboard() {
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
 
       {/* HEADER */}
-      <div className="px-8 py-6 flex items-center gap-4 border-b border-[var(--border)]">
-        <Link href="/dashboard" className="btn-back flex items-center gap-2">
-          <ArrowLeft size={16} />
-          Back
-        </Link>
+      <div className="px-8 py-6 flex items-center justify-between border-b border-[var(--border)]">
 
-        <div>
-          <h1 className="text-xl font-semibold">
-            Portfolio
-          </h1>
-          <p className="text-sm text-[var(--text-secondary)]">
-            Candidate ID: {candidateId}
-          </p>
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard" className="btn-back flex items-center gap-2">
+            <ArrowLeft size={16} />
+            Back to Dashboard
+          </Link>
+
+          <div>
+            <h1 className="text-xl font-semibold">
+              Portfolio
+            </h1>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Candidate ID: {candidateId}
+            </p>
+          </div>
         </div>
+
+        {/* REQUESTS */}
+        {pendingRequests.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setShowRequests(!showRequests)}
+              className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-500 text-black"
+            >
+              Requests
+            </button>
+
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+              {pendingRequests.length}
+            </span>
+          </div>
+        )}
       </div>
 
+      {/* MAIN */}
       <div className="px-8 py-6 flex items-start justify-center overflow-hidden" style={{ height: availableHeight }}>
 
         {hasPortfolio ? (
@@ -237,8 +309,10 @@ export default function PortfolioDashboard() {
             <p className="text-sm text-[var(--text-secondary)] mb-6">
               Add a portfolio to get started
             </p>
-
-            <button className="px-6 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-contrast)]">
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-6 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-contrast)] mt-4"
+            >
               + Add Portfolio
             </button>
 
@@ -247,53 +321,187 @@ export default function PortfolioDashboard() {
 
       </div>
 
+      {showRequests && pendingRequests.length > 0 && (
+        <div className="fixed right-6 top-24 w-[380px] max-h-[50vh] bg-[var(--card)] border rounded-xl shadow-lg flex flex-col">
+
+          {/* HEADER */}
+          <div className="flex justify-between items-center p-3 border-b">
+            <h3>Requests</h3>
+
+            <button onClick={() => setShowRequests(false)}>✕</button>
+          </div>
+
+          {/* LIST */}
+          <div className="p-4 space-y-3 overflow-y-auto flex-1">
+            {pendingRequests.map((req) => (
+              <div key={req.request_id} className="border p-3 rounded flex justify-between items-center">
+
+                <div>
+                  <p>{req.description}</p>
+                </div>
+
+                <input
+                  type="checkbox"
+                  checked={selectedRequests.includes(req.request_id)}
+                  onChange={() => toggleSelect(req.request_id)}
+                />
+
+              </div>
+            ))}
+          </div>
+
+          {/* FOOTER */}
+          <div className="p-3 border-t flex justify-end gap-2">
+            <button onClick={() => setShowRequests(false)}>
+              Cancel
+            </button>
+
+            <button
+              onClick={saveRequests}
+              className="bg-[var(--primary)] px-4 py-1 rounded text-white"
+            >
+              Save
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* MODAL */}
       {/* MODAL */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40">
 
-          <div className="bg-[var(--card)] w-[520px] rounded-2xl border border-[var(--border)] shadow-lg">
+          <div className="bg-[var(--card)] text-[var(--text)] w-[500px] rounded-xl border border-[var(--border)] max-h-[80vh] flex flex-col">
 
-            <div className="px-6 py-4 border-b border-[var(--border)]">
-              <h2 className="font-semibold">Create Portfolio</h2>
+            <div className="p-5 border-b border-[var(--border)]">
+              <h2 className="text-lg font-semibold">Create Portfolio</h2>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-5 space-y-4 overflow-y-auto">
 
-              {[
-                ["GitHub Repo URL", "github_repo_url"],
-                ["Repository Name", "github_repo_name"],
-                ["Vercel Project Name", "vercel_project_name"],
-                ["Deployment URL", "vercel_deployment_url"],
-              ].map(([label, key]) => (
-                <div key={key}>
-                  <label className="text-sm text-[var(--text-secondary)]">
-                    {label} *
-                  </label>
-                  <input
-                    value={form[key]}
-                    onChange={(e) =>
-                      setForm({ ...form, [key]: e.target.value })
-                    }
-                    className="w-full mt-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-transparent outline-none focus:border-[var(--primary)]"
-                  />
-                </div>
-              ))}
+              {/* REQUIRED FIELDS */}
+              <div>
+                <label className="text-sm text-[var(--text-secondary)]">
+                  GitHub Repo URL <span className="text-red-400">*</span>
+                </label>
+                <input
+                  value={form.github_repo_url}
+                  onChange={(e) =>
+                    setForm({ ...form, github_repo_url: e.target.value })
+                  }
+                  className="input mt-1"
+                  placeholder="https://github.com/username/repo"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-[var(--text-secondary)]">
+                  Repository Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  value={form.github_repo_name}
+                  onChange={(e) =>
+                    setForm({ ...form, github_repo_name: e.target.value })
+                  }
+                  className="input mt-1"
+                  placeholder="my-project"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-[var(--text-secondary)]">
+                  Vercel Project Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  value={form.vercel_project_name}
+                  onChange={(e) =>
+                    setForm({ ...form, vercel_project_name: e.target.value })
+                  }
+                  className="input mt-1"
+                  placeholder="my-app"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-[var(--text-secondary)]">
+                  Deployment URL <span className="text-red-400">*</span>
+                </label>
+                <input
+                  value={form.vercel_deployment_url || ""}
+                  onChange={(e) =>
+                    setForm({ ...form, vercel_deployment_url: e.target.value })
+                  }
+                  className="input mt-1"
+                  placeholder="https://my-app.vercel.app"
+                />
+              </div>
+
+              {/* OPTIONAL FIELDS */}
+              <div className="pt-2 border-t border-[var(--border)]">
+                <p className="text-xs text-[var(--text-secondary)] mb-2">
+                  Optional Fields
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm text-[var(--text-secondary)]">
+                  Project ID
+                </label>
+                <input
+                  value={form.project_id || ""}
+                  onChange={(e) =>
+                    setForm({ ...form, project_id: e.target.value })
+                  }
+                  className="input mt-1"
+                  placeholder="internal project id"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-[var(--text-secondary)]">
+                  Vercel Project ID
+                </label>
+                <input
+                  value={form.vercel_project_id || ""}
+                  onChange={(e) =>
+                    setForm({ ...form, vercel_project_id: e.target.value })
+                  }
+                  className="input mt-1"
+                  placeholder="vercel project id"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-[var(--text-secondary)]">
+                  Deployment Status
+                </label>
+                <input
+                  value={form.deployment_status || ""}
+                  onChange={(e) =>
+                    setForm({ ...form, deployment_status: e.target.value })
+                  }
+                  className="input mt-1"
+                  placeholder="LIVE / FAILED / DEPLOYING"
+                />
+              </div>
 
             </div>
 
-            <div className="px-6 py-4 border-t border-[var(--border)] flex justify-end gap-3">
+            <div className="p-5 border-t border-[var(--border)] flex justify-end gap-3">
+
               <button
                 onClick={() => setShowModal(false)}
-                className="text-[var(--text-secondary)]"
+                className="px-4 py-2 rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.05)] transition"
               >
                 Cancel
               </button>
 
               <button
                 onClick={createPortfolio}
-                className="px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-contrast)]"
+                className="px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-contrast)] font-medium hover:opacity-90 transition"
               >
-                {loading ? "Creating..." : "Create"}
+                {loading ? "Creating..." : "Create Portfolio"}
               </button>
             </div>
 
