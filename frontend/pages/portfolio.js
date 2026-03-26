@@ -193,114 +193,135 @@ export default function PortfolioDashboard() {
       <div className="px-8 py-6 flex items-start justify-center overflow-hidden" style={{ height: availableHeight }}>
 
         {hasPortfolio ? (
-          <div className="grid grid-cols-3 gap-6 w-full max-w-6xl h-full">
+          <div className="w-full max-w-6xl mx-auto">
 
-            {/* 🔥 LEFT: CANDIDATE (SMALL) */}
-            <div className="col-span-1 bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 shadow-sm h-full flex flex-col">
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-sm overflow-hidden">
 
-              <div className="flex items-center gap-3 mb-4">
+              {/* ================= TOP: CANDIDATE ================= */}
+              <div className="p-6 flex justify-between items-start">
 
-                <div className="w-10 h-10 rounded-full bg-[var(--primary)] text-[var(--primary-contrast)] flex items-center justify-center font-semibold">
-                  {candidate?.name?.charAt(0)?.toUpperCase() || "C"}
-                </div>
+                {/* LEFT */}
+                <div className="flex items-start gap-4">
 
-                <div>
-                  <h2 className="font-semibold">
-                    {candidate?.name || "Candidate"}
-                  </h2>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    {candidate?.email || "—"}
-                  </p>
-                </div>
-
-              </div>
-
-              <div className="space-y-3 text-sm">
-
-                <div>
-                  <p className="text-[var(--text-secondary)] text-xs">
-                    Candidate ID
-                  </p>
-                  <p className="font-medium">{candidateId}</p>
-                </div>
-
-                <div>
-                  <p className="text-[var(--text-secondary)] text-xs">
-                    User ID
-                  </p>
-                  <p className="font-medium">
-                    {portfolio.created_by || "—"}
-                  </p>
-                </div>
-
-              </div>
-            </div>
-
-            {/* 🔥 RIGHT: PORTFOLIO (BIG) */}
-            <div className="col-span-2 bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 shadow-sm h-full flex flex-col">
-
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="font-semibold">Portfolio Details</h2>
-
-                {/* STATUS HERE */}
-                <span className="px-3 py-1 rounded-full text-xs font-medium bg-[var(--primary)] text-[var(--primary-contrast)]">
-                  {portfolio.status}
-                </span>
-              </div>
-
-              <div className="space-y-6 text-sm">
-
-                {/* GitHub */}
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-[var(--text-secondary)] text-xs">GitHub</p>
-                    <p className="font-medium">
-                      {portfolio.github_repo_name}
-                    </p>
+                  <div className="w-14 h-14 rounded-full bg-[var(--primary)] text-[var(--primary-contrast)] flex items-center justify-center text-lg font-semibold">
+                    {candidate?.first_name?.charAt(0)?.toUpperCase() || "C"}
                   </div>
 
-                  <a
-                    href={portfolio.github_repo_url}
-                    target="_blank"
-                    className="flex items-center gap-1 text-[var(--primary)] hover:underline"
-                  >
-                    Open <ExternalLink size={14} />
-                  </a>
+                  <div>
+                    <h2 className="text-lg font-semibold">
+                      {candidate?.first_name || ""} {candidate?.last_name || ""}
+                    </h2>
+
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      {candidate?.email || "—"}
+                    </p>
+
+                    <div className="text-xs text-[var(--text-secondary)] mt-1">
+                      <p>User ID: {candidate?.user_id || "—"}</p>
+                      <p>Candidate ID: {candidate?.jaa_candidate_id || candidateId}</p>
+                    </div>
+                  </div>
+
                 </div>
 
-                {/* Project */}
-                <div>
-                  <p className="text-[var(--text-secondary)] text-xs">Project</p>
-                  <p className="font-medium">
-                    {portfolio.vercel_project_name}
+                {/* RIGHT: STATUS + LAST UPDATED */}
+                <div className="flex flex-col items-end gap-2">
+                  <p className="text-xm">
+                    Last Updated: {portfolio.updated_at
+                      ? new Date(portfolio.updated_at).toLocaleString()
+                      : "—"}
                   </p>
                 </div>
 
-                {/* Deployment */}
-                <div className="flex justify-between items-center">
+              </div>
+
+              {/* ================= DIVIDER ================= */}
+              <div className="border-t border-[var(--border)]" />
+
+              {/* ================= PORTFOLIO ================= */}
+              <div className="p-6 space-y-6 text-sm">
+
+                <h3 className="text-sm font-semibold">
+                  Portfolio Details
+                </h3>
+
+                <div className="grid grid-cols-2 gap-6">
+
                   <div>
-                    <p className="text-[var(--text-secondary)] text-xs">
-                      Deployment
-                    </p>
-                    <p className="font-medium break-all">
+                    <p className="text-xs text-[var(--text-secondary)]">Portfolio ID</p>
+                    <p className="font-medium break-all">{portfolio.portfolio_id}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-[var(--text-secondary)]">Created By</p>
+                    <p className="font-medium break-all">{portfolio.created_by}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-[var(--text-secondary)]">GitHub Repo</p>
+                    <p className="font-medium">{portfolio.github_repo_name}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-[var(--text-secondary)]">Project Name</p>
+                    <p className="font-medium">{portfolio.vercel_project_name}</p>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <span
+                      className="font-medium break-all"
+                      title={portfolio.github_repo_url}
+                    >
+                      {portfolio.github_repo_url}
+                    </span>
+
+                    <a
+                      href={portfolio.github_repo_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Open GitHub Repo"
+                      className="text-[var(--primary)] hover:underline flex items-center gap-1"
+                    >
+                      <ExternalLink size={20} />
+                    </a>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <span
+                      className="font-medium break-all"
+                      title={portfolio.vercel_deployment_url}
+                    >
                       {portfolio.vercel_deployment_url}
+                    </span>
+
+                    <a
+                      href={portfolio.vercel_deployment_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Open Deployment"
+                      className="text-[var(--primary)] hover:underline flex items-center gap-1"
+                    >
+                      <ExternalLink size={20} />
+                    </a>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-[var(--text-secondary)]">Created At</p>
+                    <p className="font-medium">
+                      {portfolio.created_at
+                        ? new Date(portfolio.created_at).toLocaleString()
+                        : "—"}
                     </p>
                   </div>
 
-                  <a
-                    href={portfolio.vercel_deployment_url}
-                    target="_blank"
-                    className="flex items-center gap-1 text-[var(--primary)] hover:underline"
-                  >
-                    Visit <ExternalLink size={14} />
-                  </a>
                 </div>
 
               </div>
-            </div>
 
+            </div>
           </div>
         ) : (
+          /* KEEP SAME EMPTY STATE */
           <div className="flex flex-col items-center justify-center h-[70vh] text-center">
 
             <p className="text-lg font-medium mb-2">
@@ -310,6 +331,7 @@ export default function PortfolioDashboard() {
             <p className="text-sm text-[var(--text-secondary)] mb-6">
               Add a portfolio to get started
             </p>
+
             <button
               onClick={() => setShowModal(true)}
               className="px-6 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-contrast)] mt-4"
@@ -348,15 +370,15 @@ export default function PortfolioDashboard() {
                       bg-[var(--card)] border-[var(--border)]
                       focus:ring-2 focus:ring-[var(--primary)]
                       ${req.status === "PENDING"
-                          ? "text-yellow-400"
-                          : req.status === "IN_PROGRESS"
-                            ? "text-blue-400"
-                            : req.status === "COMPLETED"
-                              ? "text-green-400"
-                              : "text-red-400"
-                        }
+                      ? "text-yellow-400"
+                      : req.status === "IN_PROGRESS"
+                        ? "text-blue-400"
+                        : req.status === "COMPLETED"
+                          ? "text-green-400"
+                          : "text-red-400"
+                    }
                     `}
-                  >
+                >
                   <option value="PENDING">PENDING</option>
                   <option value="IN_PROGRESS">IN PROGRESS</option>
                   <option value="COMPLETED">COMPLETED</option>
