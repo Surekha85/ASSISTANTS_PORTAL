@@ -147,7 +147,7 @@ function renderObject(obj, copy, copied) {
 function Section({ title, children }) {
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5">
-      <h2 className="text-md font-semibold mb-4">{title}</h2>
+      <h2 className="text-md font-semibold mb-4 text-blue-500">{title}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {children}
       </div>
