@@ -5,9 +5,10 @@ import {
   Github,
   Linkedin,
   User,
-  Check ,
+  Check,
   FileText,
-  LayoutGrid } from "lucide-react";
+  LayoutGrid
+} from "lucide-react";
 import { authAPI } from "../services/authAPI";
 import { useRouter } from "next/router";
 import { MapPin } from "lucide-react";
@@ -39,8 +40,14 @@ export default function AssistantDashboard() {
     return () => window.removeEventListener("resize", updateHeight);
   }, []);
 
+  // 🔥 Get assistant from localStorage (top of component)
+  const assistant =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("jobsyme_assistant_data") || "{}")
+      : {};
+
   // 🔥 Load candidates
-   useEffect(() => {
+  useEffect(() => {
     const load = async () => {
       try {
         const res = await authAPI.getAssignedCandidates();
@@ -97,7 +104,7 @@ export default function AssistantDashboard() {
     ? [selectedCandidate, ...candidates.filter((c) => c.id !== selectedCandidate.id)]
     : candidates;
 
-    // 🔥 LOADER UI
+  // 🔥 LOADER UI
   if (loading) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-[var(--bg)] text-[var(--text)]">
@@ -185,26 +192,32 @@ export default function AssistantDashboard() {
         <div className="flex-1 overflow-y-auto pr-2">
           {candidates.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
+
+              {/* 🔥 BIG TOP WELCOME */}
+              <h1 className="text-5xl md:text-6xl font-semibold tracking-tight mb-6">
+                Welcome{" "}
+                <span className="text-[var(--primary)]">
+                  {assistant?.first_name || "User"} {assistant?.last_name || ""}
+                </span>
+              </h1>
+
               {/* ICON */}
-              <div className="
-                w-20 h-20 mb-6 
-                flex items-center justify-center 
-                rounded-full 
-                bg-[var(--bg-secondary)] 
-                text-[var(--primary)] text-3xl
-              ">
-                👤
+              <div className="w-20 h-20 rounded-full bg-[rgba(255,255,255,0.05)] flex items-center justify-center mb-6">
+                <span className="text-6xl">👤</span>
               </div>
 
               {/* TITLE */}
-              <h2 className="text-xl font-semibold">
-                No Candidates Found
+              <h2 className="text-lg font-medium mb-2">
+                No Candidates Assigned
               </h2>
 
               {/* DESCRIPTION */}
-              <p className="text-sm text-[var(--text-secondary)] mt-2 max-w-sm">
-                No candidates are currently assigned to this assistant. 
-                Once candidates are added, they will appear here.
+              <p className="text-sm text-[var(--text-secondary)] max-w-md mb-2">
+                You currently don’t have any candidates assigned to you.
+              </p>
+
+              <p className="text-sm text-[var(--text-secondary)] max-w-md">
+                Once an admin assigns candidates, you will be able to view and manage them here.
               </p>
             </div>
 
@@ -223,7 +236,7 @@ export default function AssistantDashboard() {
                       isActive
                         ? "bg-[#144ca7] text-white"
                         : "bg-[var(--card)] hover:bg-[var(--bg-secondary)]"
-                    }`}
+                      }`}
                   >
                     <div className="flex justify-between items-center">
 
