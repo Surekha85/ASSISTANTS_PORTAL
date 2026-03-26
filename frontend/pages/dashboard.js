@@ -193,7 +193,7 @@ export default function AssistantDashboard() {
           {candidates.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
 
-              {/* 🔥 BIG TOP WELCOME */}
+              {/* BIG TOP WELCOME */}
               <h1 className="text-5xl md:text-6xl font-semibold tracking-tight mb-6">
                 Welcome{" "}
                 <span className="text-[var(--primary)]">
@@ -202,8 +202,8 @@ export default function AssistantDashboard() {
               </h1>
 
               {/* ICON */}
-              <div className="w-20 h-20 rounded-full bg-[rgba(255,255,255,0.05)] flex items-center justify-center mb-6">
-                <span className="text-6xl">👤</span>
+              <div className="w-20 h-20 rounded-full  flex items-center justify-center mb-6">
+                <span className="text-7xl">👤</span>
               </div>
 
               {/* TITLE */}
