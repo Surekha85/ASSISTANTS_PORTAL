@@ -63,13 +63,15 @@ export default function CandidateDetails() {
 
         {/* BASIC */}
         <Section title="Basic Info">
-          <Field label="First Name" value={data.first_name} copy={copy} copied={copied} id="fn" />
-          <Field label="Last Name" value={data.last_name} copy={copy} copied={copied} id="ln" />
-          <Field label="Email" value={data.email} copy={copy} copied={copied} id="email" />
-          <Field label="Phone" value={data.phone} copy={copy} copied={copied} id="phone" />
-          <Field label="LinkedIn" value={data.linkedin} copy={copy} copied={copied} id="linkedin" />
-          <Field label="GitHub" value={data.github} copy={copy} copied={copied} id="github" />
-          <Field label="Assistant" value={data.assistantAssignedTo} copy={copy} copied={copied} id="assistant" />
+          <Field label="first_name" value={data.first_name} copy={copy} copied={copied} id="fn" />
+          <Field label="last_name" value={data.last_name} copy={copy} copied={copied} id="ln" />
+          <Field label="email" value={data.email} copy={copy} copied={copied} id="email" />
+          <Field label="phone" value={data.phone} copy={copy} copied={copied} id="phone" />
+          <Field label="linkedin" value={data.linkedin} copy={copy} copied={copied} id="linkedin" />
+          <Field label="github" value={data.github} copy={copy} copied={copied} id="github" />
+          <Field label="resumeUrl" value={data.resumeUrl} copy={copy} copied={copied} id="resume" />
+          <Field label="createdAt" value={data.createdAt} copy={copy} copied={copied} id="created" />
+          <Field label="updatedAt" value={data.updatedAt} copy={copy} copied={copied} id="updated" />
         </Section>
 
         {/* ADDRESS */}
@@ -102,40 +104,29 @@ export default function CandidateDetails() {
   );
 }
 
-/* 🔥 RENDER OBJECT AS GRID */
+/* 🔥 LABEL FORMATTER */
+function formatLabel(key) {
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/_/g, " ")
+    .replace(/^./, (s) => s.toUpperCase());
+}
+
+/* 🔥 RENDER OBJECT */
 function renderObject(obj, copy, copied) {
   if (!obj) return null;
 
   return Object.entries(obj).map(([k, v]) => {
     if (Array.isArray(v)) {
       return (
-        <div key={k} className="col-span-2 border border-[var(--border)] rounded-lg p-3 bg-[var(--bg-secondary)]">
-
-          <div className="flex justify-between items-center mb-2">
-            <p className="text-xs text-[var(--text-secondary)]">{k}</p>
-
-            {/* COPY BUTTON (HOVER) */}
-            <button
-              onClick={() => copy(v.join(", "), k)}
-              className="opacity-70 hover:opacity-100 transition"
-            >
-              {copied === k ? <Check size={16} /> : <Copy size={16} />}
-            </button>
-          </div>
-
-        {/* SKILLS LIST */}
-          <div className="flex flex-wrap gap-2">
-            {v.map((item, i) => (
-              <span
-                key={i}
-                className="px-3 py-1 rounded-full bg-[var(--bg)] text-sm"
-              >
-                {item}
-              </span>
-            ))}
-          </div>
-
-        </div>
+        <ChipsBlock
+          key={k}
+          title={formatLabel(k)}
+          data={v}
+          copy={copy}
+          copied={copied}
+          id={k}
+        />
       );
     }
 
@@ -166,22 +157,83 @@ function Section({ title, children }) {
 
 /* FIELD */
 function Field({ label, value, copy, copied, id }) {
+  const isResume = label === "resumeUrl" && value;
+
+  // Extract file name from URL
+  const getFileName = (url) => {
+    try {
+      return url.split("/").pop().split("?")[0];
+    } catch {
+      return "resume";
+    }
+  };
+
+  const handleDownload = () => {
+    if (!value) return;
+    const link = document.createElement("a");
+    link.href = value;
+    link.download = getFileName(value);
+    link.target = "_blank";
+    link.click();
+  };
+
   return (
     <div className="flex justify-between items-center border border-[var(--border)] rounded-lg px-3 py-2 bg-[var(--bg-secondary)]">
-
+      
       <div className="overflow-hidden">
-        <p className="text-xs text-[var(--text-secondary)]">{label}</p>
-        <p className="text-sm font-medium truncate">{value || "-"}</p>
+        <p className="text-xs text-[var(--text-secondary)]">
+          {formatLabel(label)}
+        </p>
+
+        {/* ✅ Show filename instead of full URL */}
+        <p className="text-sm font-medium truncate">
+          {isResume ? getFileName(value) : (value || "-")}
+        </p>
       </div>
 
-        {/* COPY BUTTON (HIDDEN BY DEFAULT) */}
-      <button
-        onClick={() => copy(value, id)}
-        className="opacity-70 hover:opacity-100 transition"
-      >
-        {copied === id ? <Check size={16} /> : <Copy size={16} />}
-      </button>
+      <div className="flex items-center gap-2">
 
+        {/* ✅ DOWNLOAD ICON ONLY FOR RESUME */}
+        {isResume ? (
+          <button
+            onClick={handleDownload}
+            className="opacity-70 hover:opacity-100"
+            title="Download Resume"
+          >
+            ⬇️
+          </button>
+        ) : (
+          <button
+            onClick={() => copy(value, id)}
+            className="opacity-70 hover:opacity-100"
+          >
+            {copied === id ? <Check size={16} /> : <Copy size={16} />}
+          </button>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+/* CHIPS */
+function ChipsBlock({ title, data, copy, copied, id }) {
+  return (
+    <div className="col-span-2 border border-[var(--border)] rounded-lg p-3 bg-[var(--bg-secondary)]">
+      <div className="flex justify-between items-center mb-2">
+        <p className="text-xs text-[var(--text-secondary)]">{title}</p>
+        <button onClick={() => copy(data.join(", "), id)}>
+          {copied === id ? <Check size={16} /> : <Copy size={16} />}
+        </button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {data.map((item, i) => (
+          <span key={i} className="px-3 py-1 rounded-full bg-[var(--bg)] text-sm">
+            {item}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
