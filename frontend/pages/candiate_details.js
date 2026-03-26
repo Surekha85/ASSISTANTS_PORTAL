@@ -62,7 +62,7 @@ export default function CandidateDetails() {
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
         {/* BASIC */}
-        <Section title="Basic Info">
+        <Section title="Basic Information">
           <Field label="first_name" value={data.first_name} copy={copy} copied={copied} id="fn" />
           <Field label="last_name" value={data.last_name} copy={copy} copied={copied} id="ln" />
           <Field label="email" value={data.email} copy={copy} copied={copied} id="email" />
