@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { authAPI } from "../services/authAPI";
 import { useSortableData } from "../hooks/sortableData";
 import { ChevronDown, ChevronUp, Pencil, Target, Zap } from "lucide-react";
-import { ExternalLink, Download , ArrowLeft} from "lucide-react";
+import { ExternalLink, Download, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default function JobApplications() {
@@ -29,9 +29,6 @@ export default function JobApplications() {
 
   const [showModal, setShowModal] = useState(false);
   const [editJob, setEditJob] = useState(null);
-  const [qaList, setQaList] = useState([
-    { question: "", answer: "" }
-  ]);
 
   const [form, setForm] = useState({
     company: "",
@@ -40,8 +37,8 @@ export default function JobApplications() {
     applied_via: "",
     employment_type: "",
     experience: "",
-    application_date: today,
-    ats_score: ""
+    ats_score: "",
+    ai_detection_score: ""
   });
 
   useEffect(() => {
@@ -68,6 +65,50 @@ export default function JobApplications() {
     if (score < 85) return "text-yellow-400 bg-yellow-400/20";
     return "text-green-400 bg-green-400/20";
   };
+
+  // ✅ NEW STATE
+  const [qaText, setQaText] = useState("");
+
+  /* ================= HELPERS ================= */
+
+  const formatQAText = (qaArray) => {
+    if (!qaArray || qaArray.length === 0) return "";
+    return qaArray
+      .map((qa, i) => `Q${i + 1}: ${qa.question}\nA${i + 1}: ${qa.answer}`)
+      .join("\n\n");
+  };
+
+  const parseQAText = (text) => {
+    if (!text) return [];
+
+    const lines = text.split("\n");
+    let parsed = [];
+    let currentQ = "";
+    let currentA = "";
+
+    lines.forEach((line) => {
+      line = line.trim();
+
+      if (/^q[\d]*[:\-]/i.test(line)) {
+        if (currentQ && currentA) {
+          parsed.push({ question: currentQ, answer: currentA });
+        }
+        currentQ = line.replace(/^q[\d]*[:\-]/i, "").trim();
+        currentA = "";
+      } else if (/^a[\d]*[:\-]/i.test(line)) {
+        currentA = line.replace(/^a[\d]*[:\-]/i, "").trim();
+      } else if (currentA) {
+        currentA += " " + line;
+      }
+    });
+
+    if (currentQ && currentA) {
+      parsed.push({ question: currentQ, answer: currentA });
+    }
+
+    return parsed;
+  };
+
   /* ================= FETCH ================= */
   const fetchData = async () => {
     if (!candidateId) return;
@@ -132,18 +173,18 @@ export default function JobApplications() {
   /* ================= SUBMIT ================= */
   const handleDownload = async (url) => {
     try {
-      const response = await fetch(url);
-      const blob = await response.blob();
+    const response = await fetch(url);
+    const blob = await response.blob();
       // ✅ GET FILE EXTENSION FROM URL
       const fileExt = url.split(".").pop().split("?")[0]; // pdf / docx
       const candidateName = `${selectedCandidate?.first_name || "candidate"}_${selectedCandidate?.last_name || ""}`.trim();
 
-      const link = document.createElement("a");
-      link.href = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = window.URL.createObjectURL(blob);
       link.download = `${candidateName}_resume.${fileExt}`
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
 
     } catch (e) {
       console.error(e);
@@ -178,18 +219,13 @@ export default function JobApplications() {
     if (Number(form.ai_detection_score) !== editJob.ai_detection_score)
       updated.ai_detection_score = Number(form.ai_detection_score);
 
-    const normalizeQA = (list) =>
-      (list || []).map(q => ({
-        question: q.question.trim(),
-        answer: q.answer.trim()
-      }));
+    const parsedQA = parseQAText(qaText);
 
-    const isQAChanged =
-      JSON.stringify(normalizeQA(qaList)) !==
-      JSON.stringify(normalizeQA(editJob.questionsAndAnswers));
-
-    if (isQAChanged) {
-      updated.questionsAndAnswers = qaList;
+    if (
+      JSON.stringify(parsedQA) !==
+      JSON.stringify(editJob.questionsAndAnswers)
+    ) {
+      updated.questionsAndAnswers = parsedQA;
     }
 
     return updated;
@@ -200,11 +236,11 @@ export default function JobApplications() {
       setUploading(true);
 
       let res;
-      let payload = {};
+    let payload = {};
 
-      if (editJob) {
+    if (editJob) {
         // ONLY UPDATED FIELDS
-        payload = getUpdatedFields();
+      payload = getUpdatedFields();
         payload.job_id = editJob.job_id
 
         const isResumeUpdated = !!resumeFile;
@@ -224,26 +260,26 @@ export default function JobApplications() {
         // UPDATE API
         res = await authAPI.createandUpdateJobApplication(payload);
 
-      } else {
+    } else {
         // CREATE FLOW (same as before)
-        payload = {
-          jaa_candidate_id: String(candidateId),
-          company_name: form.company,
-          job_title: form.role,
-          application_link: form.job_link,
-          applied_via: form.applied_via,
+      payload = {
+        jaa_candidate_id: String(candidateId),
+        company_name: form.company,
+        job_title: form.role,
+        application_link: form.job_link,
+        applied_via: form.applied_via,
           employment_type: form.employment_type || "Full-time",
-          experience: form.experience,
-          ats_score: Number(form.ats_score),
-          ai_detection_score: Number(form.ai_detection_score),
-          resume_file_extension: resumeFile?.name.endsWith(".pdf")
+        experience: form.experience,
+        ats_score: Number(form.ats_score),
+        ai_detection_score: Number(form.ai_detection_score),
+        resume_file_extension: resumeFile?.name.endsWith(".pdf")
             ? ".pdf"
             : ".docx",
-          questionsAndAnswers: qaList
-        };
+        questionsAndAnswers: parseQAText(qaText)
+      };
 
         res = await authAPI.createandUpdateJobApplication(payload);
-      }
+    }
 
       const parsed =
         typeof res.body === "string" ? JSON.parse(res.body) : res;
@@ -274,8 +310,8 @@ export default function JobApplications() {
       showToast("Something went wrong ❌");
     } finally {
       setUploading(false);
-      setShowModal(false);
-      fetchData();
+    setShowModal(false);
+    fetchData();
     }
   };
 
@@ -297,9 +333,7 @@ export default function JobApplications() {
       ats_score: "",
       ai_detection_score: "",
     });
-    // 🔥 RESET Q&A HERE
-    setQaList([{ question: "", answer: "" }]);
-
+    setQaText("");
     setShowModal(true);
   };
 
@@ -317,11 +351,8 @@ export default function JobApplications() {
       ai_detection_score: job.ai_detection_score || ""
     });
 
-    setQaList(
-      job.questionsAndAnswers && job.questionsAndAnswers.length > 0
-        ? job.questionsAndAnswers
-        : [{ question: "", answer: "" }]
-    );
+    // ✅ convert array → text
+    setQaText(formatQAText(job.questionsAndAnswers));
 
     setShowModal(true);
   };
@@ -522,51 +553,32 @@ export default function JobApplications() {
 
                   {/* 🔥 QUESTIONS & ANSWERS SECTION */}
                   {j.questionsAndAnswers && j.questionsAndAnswers.length > 0 && (
-                    <div className="col-span-2 mt-4">
+  <div className="col-span-2 mt-4">
 
-                      <div className="flex justify-between items-center mb-2">
-                        <p className="text-gray-400 text-sm">
-                          Screening Questions & Answers
-                        </p>
+    <div className="flex justify-between items-center mb-2">
+      <p className="text-gray-400 text-sm">
+        Screening Questions & Answers
+      </p>
 
-                        <button
-                          onClick={() => setShowQA(!showQA)}
-                          className="text-xs px-3 py-1 rounded-md 
-                                    bg-gray-200 text-gray-700 hover:bg-gray-300
-                                    dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600
-                                    transition"
-                        >
-                          {showQA ? "Hide" : "Show"}
-                        </button>
-                      </div>
-                      {showQA && (
-                          <div className="space-y-3">
-                            {j.questionsAndAnswers.map((qa, idx) => (
-                              <div
-                                key={idx}
-                                className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-gray-700"
-                              >
+      <button
+        onClick={() => setShowQA(!showQA)}
+        className="text-xs px-3 py-1 rounded-md bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+      >
+        {showQA ? "Hide" : "Show"}
+      </button>
+    </div>
 
-                                <p className="text-xs text-gray-400 mb-1 text-red-600 dark:text-red-400">
-                                  Question {idx + 1}
-                                </p>
-                                <p className="font-medium mb-2">
-                                  {qa.question}
-                                </p>
+    {showQA && (
+      <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-gray-700">
+        
+        <pre className="whitespace-pre-wrap text-sm font-medium">
+          {formatQAText(j.questionsAndAnswers)}
+        </pre>
 
-                                <p className="text-xs text-gray-400 mb-1 text-green-600 dark:text-green-400">
-                                  Answer
-                                </p>
-                                <p className="font-medium mb-2">
-                                  {qa.answer}
-                                </p>
-
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                    </div>
-                  )}
+      </div>
+    )}
+  </div>
+)}
 
                 </div>
               )}
@@ -743,52 +755,14 @@ export default function JobApplications() {
 
                 <div className="space-y-3 mt-2">
 
-                  {qaList.map((qa, index) => (
-                    <div
-                      key={index}
-                      className="p-3 rounded-xl border border-gray-700 bg-[var(--bg-secondary)]"
-                    >
+                  
 
-                      {/* QUESTION */}
-                      <input
-                        placeholder={`Question ${index + 1}`}
-                        value={qa.question}
-                        onChange={(e) =>
-                          updateQA(index, "question", e.target.value)
-                        }
-                        className="input mb-2"
-                      />
-
-                      {/* ANSWER */}
-                      <textarea
-                        placeholder="Write answer..."
-                        value={qa.answer}
-                        onChange={(e) =>
-                          updateQA(index, "answer", e.target.value)
-                        }
-                        className="input"
-                      />
-
-                      {/* REMOVE BUTTON */}
-                      {qaList.length > 1 && (
-                        <button
-                          onClick={() => removeQA(index)}
-                          className="text-red-400 text-xs mt-2 hover:underline"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  ))}
-
-                  {/* ADD BUTTON */}
-                  <button
-                    type="button"
-                    onClick={addQA}
-                    className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm"
-                  >
-                    + Add Question
-                  </button>
+                  <textarea
+              value={qaText}
+              onChange={(e) => setQaText(e.target.value)}
+              placeholder="Q1: ... A1: ..."
+              className="w-full h-40 border p-2"
+            />
 
                 </div>
               </div>
